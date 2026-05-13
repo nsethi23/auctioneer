@@ -1,6 +1,7 @@
 def compute_welfare(sorted_bidders, ctrs):
     welfare = 0.0
 
+    # Welfare is the total expected value created by assigning bidders to slots.
     for i, bidder in enumerate(sorted_bidders):
         if i >= len(ctrs):
             break
@@ -27,6 +28,8 @@ def run_vcg_auction(bidders, ctrs):
         ctr = ctrs[i]
         realized_value = ctr * bidder["value"]
 
+        # VCG prices each winner by the welfare other bidders would gain
+        # if this winner were removed and the slots were reallocated.
         welfare_without_bidder = compute_welfare(
             sorted_bidders[:i] + sorted_bidders[i + 1 :],
             ctrs,
@@ -35,6 +38,7 @@ def run_vcg_auction(bidders, ctrs):
         total_welfare_with_bidder = compute_welfare(sorted_bidders, ctrs)
         others_welfare_with_bidder = total_welfare_with_bidder - realized_value
 
+        # The payment is the externality imposed on everyone else.
         payment = welfare_without_bidder - others_welfare_with_bidder
         utility = realized_value - payment
 
