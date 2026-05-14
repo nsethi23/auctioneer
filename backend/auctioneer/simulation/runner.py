@@ -28,6 +28,7 @@ def run_repeated_comparisons(
     difference_bidder_surplus_total = 0.0
 
     for _ in range(num_auctions):
+        # Each round samples a fresh truthful market, then compares mechanisms.
         bidders = generate_bidders(num_bidders, min_value, max_value, rng)
         comparison_result = compare_gsp_and_vcg(bidders, ctrs)
 
@@ -45,6 +46,7 @@ def run_repeated_comparisons(
             "bidder_surplus"
         ]
 
+    # Return aggregate averages instead of every auction to keep simulations compact.
     return {
         "num_auctions": num_auctions,
         "averages": {

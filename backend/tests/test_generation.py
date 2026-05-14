@@ -1,5 +1,8 @@
 import random
 
+import pytest
+
+from auctioneer.agents.strategies import shaded_bid
 from auctioneer.simulation.generation import generate_bidders
 
 
@@ -29,6 +32,35 @@ def test_generate_bidders_bids_truthfully_by_default():
 
     for bidder in bidders:
         assert bidder["bid"] == bidder["value"]
+
+
+def test_generate_bidders_accepts_shaded_strategy():
+    bidders = generate_bidders(
+        3,
+        10.0,
+        10.0,
+        rng=random.Random(123),
+        strategy=shaded_bid,
+        strategy_kwargs={"shade_factor": 0.8},
+    )
+
+    for bidder in bidders:
+        assert bidder["value"] == pytest.approx(10.0)
+        assert bidder["bid"] == pytest.approx(8.0)
+
+
+def test_generate_bidders_accepts_strategy_kwargs():
+    bidders = generate_bidders(
+        1,
+        10.0,
+        10.0,
+        rng=random.Random(123),
+        strategy=shaded_bid,
+        strategy_kwargs={"shade_factor": 0.25},
+    )
+
+    assert bidders[0]["value"] == pytest.approx(10.0)
+    assert bidders[0]["bid"] == pytest.approx(2.5)
 
 
 def test_generate_bidders_is_deterministic_with_seeded_rng():
