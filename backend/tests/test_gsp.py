@@ -38,3 +38,68 @@ def test_run_gsp_auction_three_bidders_two_slots():
     assert result["revenue"] == pytest.approx(6.3)
     assert result["welfare"] == pytest.approx(8.4)
     assert result["bidder_surplus"] == pytest.approx(2.1)
+
+
+def test_run_gsp_auction_with_zero_slots():
+    bidders = [
+        {"id": "A", "value": 10.0, "bid": 10.0},
+        {"id": "B", "value": 8.0, "bid": 8.0},
+    ]
+
+    result = run_gsp_auction(bidders, [])
+
+    assert result["allocations"] == []
+    assert result["revenue"] == pytest.approx(0.0)
+    assert result["welfare"] == pytest.approx(0.0)
+    assert result["bidder_surplus"] == pytest.approx(0.0)
+
+
+def test_run_gsp_auction_with_one_bidder():
+    bidders = [
+        {"id": "A", "value": 10.0, "bid": 7.0},
+    ]
+
+    result = run_gsp_auction(bidders, [0.5])
+
+    assert len(result["allocations"]) == 1
+
+    allocation = result["allocations"][0]
+
+    assert allocation["bidder_id"] == "A"
+    assert allocation["slot"] == 0
+    assert allocation["payment"] == pytest.approx(0.0)
+    assert allocation["utility"] == pytest.approx(5.0)
+
+    assert result["revenue"] == pytest.approx(0.0)
+    assert result["welfare"] == pytest.approx(5.0)
+    assert result["bidder_surplus"] == pytest.approx(5.0)
+
+
+def test_run_gsp_auction_sorts_bidders_by_bid():
+    bidders = [
+        {"id": "C", "value": 5.0, "bid": 5.0},
+        {"id": "A", "value": 10.0, "bid": 10.0},
+        {"id": "B", "value": 8.0, "bid": 8.0},
+    ]
+
+    result = run_gsp_auction(bidders, [0.6, 0.3])
+
+    assert result["allocations"][0]["bidder_id"] == "A"
+    assert result["allocations"][1]["bidder_id"] == "B"
+
+
+def test_run_gsp_auction_with_more_slots_than_bidders():
+    bidders = [
+        {"id": "A", "value": 10.0, "bid": 10.0},
+        {"id": "B", "value": 8.0, "bid": 8.0},
+    ]
+
+    result = run_gsp_auction(bidders, [0.6, 0.3, 0.1])
+
+    assert len(result["allocations"]) == 2
+    assert result["allocations"][0]["payment"] == pytest.approx(4.8)
+    assert result["allocations"][1]["payment"] == pytest.approx(0.0)
+
+    assert result["revenue"] == pytest.approx(4.8)
+    assert result["welfare"] == pytest.approx(8.4)
+    assert result["bidder_surplus"] == pytest.approx(3.6)
