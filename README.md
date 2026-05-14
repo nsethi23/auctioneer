@@ -15,7 +15,10 @@ The backend currently implements:
 - Generalized Second Price (GSP) auction pricing
 - Vickrey-Clarke-Groves (VCG) auction pricing
 - A comparison helper for running GSP and VCG on the same market
-- Deterministic tests for the core auction math
+- Synthetic bidder generation with configurable bidding strategies
+- Synthetic click-through rate (CTR) generation for ad slots
+- Repeated auction simulations with averaged revenue, welfare, and surplus
+- Deterministic tests for auction math, simulation helpers, and strategies
 
 ## Core Concepts
 
@@ -28,6 +31,11 @@ In VCG, each winner pays the externality they impose on other bidders. This
 means the payment is based on how much worse off the rest of the market is
 because that bidder won a slot. VCG is incentive compatible, so truthful bidding
 is the dominant strategy under the standard assumptions.
+
+Bidder strategies separate an advertiser's private value from the bid they
+submit. Truthful bidders bid their value directly, while shaded bidders bid a
+fraction of their value to preserve surplus. This distinction is central to
+studying why GSP creates strategic incentives.
 
 ## Backend Setup
 
@@ -67,9 +75,8 @@ python -m ruff format .
 
 Planned next steps:
 
-- Add edge case tests for GSP and VCG
-- Support generated bidder populations and slot configurations
-- Run repeated simulations across thousands of auctions
-- Add bidder strategies such as truthful bidding and bid shading
+- Compare truthful and shaded strategy profiles across repeated simulations
+- Support mixed bidder populations with different strategies in the same market
+- Compute best-response bids under GSP
 - Add reinforcement learning agents that learn bidding behavior over time
 - Build a React and D3 frontend for auction visualization
