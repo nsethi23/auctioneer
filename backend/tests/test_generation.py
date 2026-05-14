@@ -3,7 +3,7 @@ import random
 import pytest
 
 from auctioneer.agents.strategies import shaded_bid
-from auctioneer.simulation.generation import generate_bidders
+from auctioneer.simulation.generation import generate_bidders, generate_ctrs
 
 
 def test_generate_bidders_returns_requested_count():
@@ -68,3 +68,21 @@ def test_generate_bidders_is_deterministic_with_seeded_rng():
     second = generate_bidders(3, 1.0, 10.0, rng=random.Random(123))
 
     assert first == second
+
+
+def test_generate_ctrs_returns_requested_count():
+    ctrs = generate_ctrs(num_slots=3, top_ctr=0.6, decay=0.5)
+
+    assert len(ctrs) == 3
+
+
+def test_generate_ctrs_applies_decay_per_slot():
+    ctrs = generate_ctrs(num_slots=3, top_ctr=0.6, decay=0.5)
+
+    assert ctrs[0] == pytest.approx(0.6)
+    assert ctrs[1] == pytest.approx(0.3)
+    assert ctrs[2] == pytest.approx(0.15)
+
+
+def test_generate_ctrs_with_zero_slots_returns_empty_list():
+    assert generate_ctrs(num_slots=0, top_ctr=0.6, decay=0.5) == []

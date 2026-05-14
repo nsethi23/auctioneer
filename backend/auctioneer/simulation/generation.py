@@ -33,3 +33,13 @@ def generate_bidders(
         )
 
     return bidders
+
+
+def generate_ctrs(num_slots, top_ctr, decay):
+    ctrs = []
+
+    for i in range(num_slots):
+        # Model lower ad slots as progressively less likely to receive clicks.
+        ctrs.append(top_ctr * (decay**i))
+
+    return ctrs
