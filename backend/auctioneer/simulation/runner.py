@@ -1,5 +1,6 @@
 import random
 
+from auctioneer.agents.strategies import truthful_bid
 from auctioneer.simulation.comparison import compare_gsp_and_vcg
 from auctioneer.simulation.generation import generate_bidders
 
@@ -11,6 +12,8 @@ def run_repeated_comparisons(
     min_value,
     max_value,
     rng=None,
+    strategy=truthful_bid,
+    strategy_kwargs=None,
 ):
     if rng is None:
         rng = random.Random()
@@ -28,8 +31,15 @@ def run_repeated_comparisons(
     difference_bidder_surplus_total = 0.0
 
     for _ in range(num_auctions):
-        # Each round samples a fresh truthful market, then compares mechanisms.
-        bidders = generate_bidders(num_bidders, min_value, max_value, rng)
+        # Each round samples a fresh market, applies a bidding strategy, then compares mechanisms.
+        bidders = generate_bidders(
+            num_bidders,
+            min_value,
+            max_value,
+            rng,
+            strategy,
+            strategy_kwargs,
+        )
         comparison_result = compare_gsp_and_vcg(bidders, ctrs)
 
         gsp_revenue_total += comparison_result["gsp"]["revenue"]

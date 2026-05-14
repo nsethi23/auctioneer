@@ -2,6 +2,7 @@ import random
 
 import pytest
 
+from auctioneer.agents.strategies import shaded_bid
 from auctioneer.simulation.runner import run_repeated_comparisons
 
 
@@ -81,3 +82,45 @@ def test_run_repeated_comparisons_with_zero_slots_has_zero_metrics():
         assert result["averages"][mechanism]["revenue"] == pytest.approx(0.0)
         assert result["averages"][mechanism]["welfare"] == pytest.approx(0.0)
         assert result["averages"][mechanism]["bidder_surplus"] == pytest.approx(0.0)
+
+
+def test_run_repeated_comparisons_accepts_shaded_strategy():
+    truthful_result = run_repeated_comparisons(
+        num_auctions=1,
+        num_bidders=3,
+        ctrs=[0.6, 0.3],
+        min_value=10.0,
+        max_value=10.0,
+        rng=random.Random(123),
+    )
+
+    shaded_result = run_repeated_comparisons(
+        num_auctions=1,
+        num_bidders=3,
+        ctrs=[0.6, 0.3],
+        min_value=10.0,
+        max_value=10.0,
+        rng=random.Random(123),
+        strategy=shaded_bid,
+        strategy_kwargs={"shade_factor": 0.5},
+    )
+
+    assert (
+        shaded_result["averages"]["gsp"]["revenue"]
+        < truthful_result["averages"]["gsp"]["revenue"]
+    )
+
+
+def test_run_repeated_comparisons_passes_strategy_kwargs():
+    result = run_repeated_comparisons(
+        num_auctions=1,
+        num_bidders=3,
+        ctrs=[0.6, 0.3],
+        min_value=10.0,
+        max_value=10.0,
+        rng=random.Random(123),
+        strategy=shaded_bid,
+        strategy_kwargs={"shade_factor": 0.25},
+    )
+
+    assert result["averages"]["gsp"]["revenue"] == pytest.approx(2.25)
