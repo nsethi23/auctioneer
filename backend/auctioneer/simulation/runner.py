@@ -1,0 +1,67 @@
+import random
+
+from auctioneer.simulation.comparison import compare_gsp_and_vcg
+from auctioneer.simulation.generation import generate_bidders
+
+
+def run_repeated_comparisons(
+    num_auctions,
+    num_bidders,
+    ctrs,
+    min_value,
+    max_value,
+    rng=None,
+):
+    if rng is None:
+        rng = random.Random()
+
+    gsp_revenue_total = 0.0
+    gsp_welfare_total = 0.0
+    gsp_bidder_surplus_total = 0.0
+
+    vcg_revenue_total = 0.0
+    vcg_welfare_total = 0.0
+    vcg_bidder_surplus_total = 0.0
+
+    difference_revenue_total = 0.0
+    difference_welfare_total = 0.0
+    difference_bidder_surplus_total = 0.0
+
+    for _ in range(num_auctions):
+        bidders = generate_bidders(num_bidders, min_value, max_value, rng)
+        comparison_result = compare_gsp_and_vcg(bidders, ctrs)
+
+        gsp_revenue_total += comparison_result["gsp"]["revenue"]
+        gsp_welfare_total += comparison_result["gsp"]["welfare"]
+        gsp_bidder_surplus_total += comparison_result["gsp"]["bidder_surplus"]
+
+        vcg_revenue_total += comparison_result["vcg"]["revenue"]
+        vcg_welfare_total += comparison_result["vcg"]["welfare"]
+        vcg_bidder_surplus_total += comparison_result["vcg"]["bidder_surplus"]
+
+        difference_revenue_total += comparison_result["difference"]["revenue"]
+        difference_welfare_total += comparison_result["difference"]["welfare"]
+        difference_bidder_surplus_total += comparison_result["difference"][
+            "bidder_surplus"
+        ]
+
+    return {
+        "num_auctions": num_auctions,
+        "averages": {
+            "gsp": {
+                "revenue": gsp_revenue_total / num_auctions,
+                "welfare": gsp_welfare_total / num_auctions,
+                "bidder_surplus": gsp_bidder_surplus_total / num_auctions,
+            },
+            "vcg": {
+                "revenue": vcg_revenue_total / num_auctions,
+                "welfare": vcg_welfare_total / num_auctions,
+                "bidder_surplus": vcg_bidder_surplus_total / num_auctions,
+            },
+            "difference": {
+                "revenue": difference_revenue_total / num_auctions,
+                "welfare": difference_welfare_total / num_auctions,
+                "bidder_surplus": difference_bidder_surplus_total / num_auctions,
+            },
+        },
+    }
