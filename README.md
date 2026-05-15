@@ -6,7 +6,7 @@ mechanism design, and bidder strategy.
 The project models sponsored-search style ad markets where advertisers bid for a
 limited number of ad slots with different click-through rates. The core goal is
 to compare how auction mechanisms change platform revenue, market efficiency,
-and bidder surplus.
+bidder surplus, and strategic bidding behavior.
 
 ## Current Scope
 
@@ -51,6 +51,25 @@ The Q-learning bidder learns from repeated GSP auction rewards instead of being
 given the auction math directly. Its learned policy can be compared against the
 best-response benchmark using bid gap, utility gap, and reward averages.
 
+## Target Demonstrations
+
+The completed project is intended to demonstrate four layers of auction behavior:
+
+- Economic mechanism design: GSP and VCG can allocate the same slots while
+  creating different payment incentives. VCG is truthful under the standard
+  assumptions; GSP generally is not.
+- Strategic interaction: truthful and shaded bidder populations produce different
+  revenue and surplus outcomes, especially under GSP.
+- Best-response analysis: given competitors' bids, a bidder can compute the GSP
+  bid that maximizes utility. Repeating this across values produces strategy
+  curve and heatmap data.
+- Learned behavior: a Q-learning bidder should learn high-utility shaded bids
+  from repeated auction rewards and can be compared with the analytical
+  best-response benchmark.
+
+The simulation is not intended to reprove the theory in the papers. It turns the
+theory into testable, visual, and interactive experiments.
+
 ## Backend Setup
 
 Create and activate a virtual environment from the repo root:
@@ -89,5 +108,16 @@ python -m ruff format .
 
 Planned next steps:
 
+- Strengthen the RL convergence experiment so learned bids can be tracked against
+  best-response bids over training.
+- Add Nash-style population dynamics where bidders iteratively update toward
+  best responses.
 - Expose auction, simulation, strategy, and learning workflows through an API
-- Build a React and D3 frontend for auction visualization
+- Build a React and D3 frontend for GSP/VCG comparison, strategy outcomes,
+  best-response curves, and RL learning curves.
+
+## References
+
+- Benjamin Edelman, Michael Ostrovsky, and Michael Schwarz, "Internet
+  Advertising and the Generalized Second-Price Auction"
+- Hal R. Varian, "Position Auctions"
