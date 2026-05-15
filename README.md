@@ -18,7 +18,10 @@ The backend currently implements:
 - Synthetic bidder generation with configurable bidding strategies
 - Synthetic click-through rate (CTR) generation for ad slots
 - Repeated auction simulations with averaged revenue, welfare, and surplus
-- Deterministic tests for auction math, simulation helpers, and strategies
+- Truthful, shaded, and mixed bidder strategy profiles
+- GSP best-response bid search and curve data for strategy visualization
+- Deterministic tests for auction math, simulation helpers, strategies, and
+  best-response behavior
 
 ## Core Concepts
 
@@ -36,6 +39,11 @@ Bidder strategies separate an advertiser's private value from the bid they
 submit. Truthful bidders bid their value directly, while shaded bidders bid a
 fraction of their value to preserve surplus. This distinction is central to
 studying why GSP creates strategic incentives.
+
+Best-response search makes that incentive visible by holding the rest of the
+market fixed, trying candidate bids for one bidder, and selecting the bid that
+maximizes utility under GSP. Running that search across private values produces
+curve data for future equilibrium and heatmap visualizations.
 
 ## Backend Setup
 
@@ -75,8 +83,6 @@ python -m ruff format .
 
 Planned next steps:
 
-- Compare truthful and shaded strategy profiles across repeated simulations
-- Support mixed bidder populations with different strategies in the same market
-- Compute best-response bids under GSP
+- Generate equilibrium-style heatmap data from best-response curves
 - Add reinforcement learning agents that learn bidding behavior over time
 - Build a React and D3 frontend for auction visualization

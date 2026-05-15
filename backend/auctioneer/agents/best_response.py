@@ -37,3 +37,33 @@ def find_best_response_bid(
         "utility": best_utility,
         "results": results,
     }
+
+
+def generate_best_response_curve(
+    bidder_id,
+    values,
+    other_bidders,
+    ctrs,
+    candidate_bids,
+):
+    results = []
+
+    # Sweep private values to produce chart-ready best-response data.
+    for value in values:
+        best_response = find_best_response_bid(
+            bidder_id,
+            value,
+            other_bidders,
+            ctrs,
+            candidate_bids,
+        )
+        results.append(
+            {
+                "value": value,
+                "best_bid": best_response["bid"],
+                "best_utility": best_response["utility"],
+                "results": best_response["results"],
+            }
+        )
+
+    return results
