@@ -43,3 +43,28 @@ def generate_ctrs(num_slots, top_ctr, decay):
         ctrs.append(top_ctr * (decay**i))
 
     return ctrs
+
+
+def generate_bidders_from_profiles(profiles, rng=None):
+    if rng is None:
+        rng = random.Random()
+
+    bidders = []
+
+    for profile in profiles:
+        # Each profile owns its value range and bidding strategy.
+        value = rng.uniform(profile["min_value"], profile["max_value"])
+        strategy = profile["strategy"]
+        strategy_kwargs = profile.get("strategy_kwargs", {})
+        bid = strategy(value, **strategy_kwargs)
+
+        # This supports mixed markets, where bidders can use different strategies.
+        bidders.append(
+            {
+                "id": profile["id"],
+                "value": value,
+                "bid": bid,
+            }
+        )
+
+    return bidders

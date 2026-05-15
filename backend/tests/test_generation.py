@@ -2,8 +2,12 @@ import random
 
 import pytest
 
-from auctioneer.agents.strategies import shaded_bid
-from auctioneer.simulation.generation import generate_bidders, generate_ctrs
+from auctioneer.agents.strategies import shaded_bid, truthful_bid
+from auctioneer.simulation.generation import (
+    generate_bidders,
+    generate_bidders_from_profiles,
+    generate_ctrs,
+)
 
 
 def test_generate_bidders_returns_requested_count():
@@ -86,3 +90,74 @@ def test_generate_ctrs_applies_decay_per_slot():
 
 def test_generate_ctrs_with_zero_slots_returns_empty_list():
     assert generate_ctrs(num_slots=0, top_ctr=0.6, decay=0.5) == []
+
+
+def test_generate_bidders_from_profiles_preserves_profile_ids():
+    profiles = [
+        {
+            "id": "A",
+            "min_value": 10.0,
+            "max_value": 10.0,
+            "strategy": truthful_bid,
+        },
+        {
+            "id": "B",
+            "min_value": 10.0,
+            "max_value": 10.0,
+            "strategy": shaded_bid,
+            "strategy_kwargs": {"shade_factor": 0.8},
+        },
+    ]
+
+    bidders = generate_bidders_from_profiles(profiles, rng=random.Random(123))
+
+    assert bidders[0]["id"] == "A"
+    assert bidders[1]["id"] == "B"
+
+
+def test_generate_bidders_from_profiles_applies_profile_strategies():
+    profiles = [
+        {
+            "id": "truthful",
+            "min_value": 10.0,
+            "max_value": 10.0,
+            "strategy": truthful_bid,
+        },
+        {
+            "id": "shaded",
+            "min_value": 10.0,
+            "max_value": 10.0,
+            "strategy": shaded_bid,
+            "strategy_kwargs": {"shade_factor": 0.8},
+        },
+    ]
+
+    bidders = generate_bidders_from_profiles(profiles, rng=random.Random(123))
+
+    assert bidders[0]["value"] == pytest.approx(10.0)
+    assert bidders[0]["bid"] == pytest.approx(10.0)
+    assert bidders[1]["value"] == pytest.approx(10.0)
+    assert bidders[1]["bid"] == pytest.approx(8.0)
+
+
+def test_generate_bidders_from_profiles_is_deterministic_with_seeded_rng():
+    profiles = [
+        {
+            "id": "A",
+            "min_value": 1.0,
+            "max_value": 10.0,
+            "strategy": truthful_bid,
+        },
+        {
+            "id": "B",
+            "min_value": 1.0,
+            "max_value": 10.0,
+            "strategy": shaded_bid,
+            "strategy_kwargs": {"shade_factor": 0.8},
+        },
+    ]
+
+    first = generate_bidders_from_profiles(profiles, rng=random.Random(123))
+    second = generate_bidders_from_profiles(profiles, rng=random.Random(123))
+
+    assert first == second
