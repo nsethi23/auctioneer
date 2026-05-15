@@ -20,8 +20,10 @@ The backend currently implements:
 - Repeated auction simulations with averaged revenue, welfare, and surplus
 - Truthful, shaded, and mixed bidder strategy profiles
 - GSP best-response bid search and curve data for strategy visualization
+- Q-learning bidder core, GSP training loop, best-response comparison, and
+  convergence metrics
 - Deterministic tests for auction math, simulation helpers, strategies, and
-  best-response behavior
+  learned bidding behavior
 
 ## Core Concepts
 
@@ -44,6 +46,10 @@ Best-response search makes that incentive visible by holding the rest of the
 market fixed, trying candidate bids for one bidder, and selecting the bid that
 maximizes utility under GSP. Running that search across private values produces
 curve data for future equilibrium and heatmap visualizations.
+
+The Q-learning bidder learns from repeated GSP auction rewards instead of being
+given the auction math directly. Its learned policy can be compared against the
+best-response benchmark using bid gap, utility gap, and reward averages.
 
 ## Backend Setup
 
@@ -83,6 +89,5 @@ python -m ruff format .
 
 Planned next steps:
 
-- Generate equilibrium-style heatmap data from best-response curves
-- Add reinforcement learning agents that learn bidding behavior over time
+- Expose auction, simulation, strategy, and learning workflows through an API
 - Build a React and D3 frontend for auction visualization
