@@ -165,6 +165,46 @@ def test_generate_bidders_from_profiles_applies_profile_strategies():
     assert bidders[1]["bid"] == pytest.approx(8.0)
 
 
+def test_generate_bidders_from_profiles_preserves_explicit_strategy_names():
+    profiles = [
+        {
+            "id": "A",
+            "min_value": 10.0,
+            "max_value": 10.0,
+            "strategy": truthful_bid,
+            "strategy_name": "truthful",
+        },
+        {
+            "id": "B",
+            "min_value": 10.0,
+            "max_value": 10.0,
+            "strategy": shaded_bid,
+            "strategy_name": "shaded",
+            "strategy_kwargs": {"shade_factor": 0.8},
+        },
+    ]
+
+    bidders = generate_bidders_from_profiles(profiles, rng=random.Random(123))
+
+    assert bidders[0]["strategy"] == "truthful"
+    assert bidders[1]["strategy"] == "shaded"
+
+
+def test_generate_bidders_from_profiles_defaults_strategy_name_to_function_name():
+    profiles = [
+        {
+            "id": "A",
+            "min_value": 10.0,
+            "max_value": 10.0,
+            "strategy": truthful_bid,
+        }
+    ]
+
+    bidders = generate_bidders_from_profiles(profiles, rng=random.Random(123))
+
+    assert bidders[0]["strategy"] == "truthful_bid"
+
+
 def test_generate_bidders_from_profiles_is_deterministic_with_seeded_rng():
     profiles = [
         {

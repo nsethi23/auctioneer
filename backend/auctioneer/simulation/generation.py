@@ -65,14 +65,16 @@ def generate_bidders_from_profiles(profiles, rng=None):
         value = rng.uniform(profile["min_value"], profile["max_value"])
         strategy = profile["strategy"]
         strategy_kwargs = profile.get("strategy_kwargs", {})
+        strategy_name = profile.get("strategy_name", strategy.__name__)
         bid = strategy(value, **strategy_kwargs)
 
-        # This supports mixed markets, where bidders can use different strategies.
+        # Keep the strategy label so later metrics can group outcomes by behavior.
         bidders.append(
             {
                 "id": profile["id"],
                 "value": value,
                 "bid": bid,
+                "strategy": strategy_name,
             }
         )
 
