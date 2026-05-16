@@ -1,4 +1,5 @@
 from auctioneer.auctions.gsp import run_gsp_auction
+from auctioneer.metrics.allocations import get_bidder_utility
 
 
 def find_best_response_bid(
@@ -16,14 +17,7 @@ def find_best_response_bid(
     for bid in candidate_bids:
         bidder = {"id": bidder_id, "value": value, "bid": bid}
         auction_result = run_gsp_auction(other_bidders + [bidder], ctrs)
-
-        # Losing bidders do not appear in allocations, so their utility is zero.
-        utility = 0.0
-
-        for allocation in auction_result["allocations"]:
-            if allocation["bidder_id"] == bidder_id:
-                utility = allocation["utility"]
-                break
+        utility = get_bidder_utility(auction_result, bidder_id)
 
         results.append({"bid": bid, "utility": utility})
 

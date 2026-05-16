@@ -4,6 +4,7 @@ from auctioneer.agents.best_response import find_best_response_bid
 from auctioneer.agents.q_learning import QLearningBidder
 from auctioneer.agents.q_learning_training import train_q_learning_bidder
 from auctioneer.auctions.gsp import run_gsp_auction
+from auctioneer.metrics.allocations import get_bidder_utility
 
 
 def compute_convergence_metrics(history, learned_bid, learned_q_value, best_response):
@@ -151,13 +152,7 @@ def track_q_learning_convergence(
         }
 
         auction_result = run_gsp_auction(other_bidders + [bidder], ctrs)
-
-        reward = 0.0
-
-        for allocation in auction_result["allocations"]:
-            if allocation["bidder_id"] == bidder_id:
-                reward = allocation["utility"]
-                break
+        reward = get_bidder_utility(auction_result, bidder_id)
 
         q_value = agent.update(
             state=state,

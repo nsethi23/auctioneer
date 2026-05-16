@@ -2,6 +2,7 @@ import random
 
 from auctioneer.agents.q_learning import QLearningBidder
 from auctioneer.auctions.gsp import run_gsp_auction
+from auctioneer.metrics.allocations import get_bidder_utility
 
 
 def train_q_learning_bidder(
@@ -38,13 +39,7 @@ def train_q_learning_bidder(
         auction_result = run_gsp_auction(other_bidders + [bidder], ctrs)
 
         # Reward is the bidder's realized utility from the auction.
-        reward = 0.0
-
-        # Losing bidders do not appear in allocations, so reward remains zero.
-        for allocation in auction_result["allocations"]:
-            if allocation["bidder_id"] == bidder_id:
-                reward = allocation["utility"]
-                break
+        reward = get_bidder_utility(auction_result, bidder_id)
 
         q_value = agent.update(state, bid, reward, next_state, candidate_bids)
 
