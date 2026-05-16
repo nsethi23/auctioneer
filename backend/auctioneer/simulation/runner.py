@@ -15,6 +15,15 @@ def run_repeated_comparisons(
     strategy=truthful_bid,
     strategy_kwargs=None,
 ):
+    if num_auctions <= 0:
+        raise ValueError("num_auctions must be positive")
+
+    if num_bidders < 0:
+        raise ValueError("num_bidders must be non-negative")
+
+    if min_value > max_value:
+        raise ValueError("min_value must be less than or equal to max_value")
+
     if rng is None:
         rng = random.Random()
 

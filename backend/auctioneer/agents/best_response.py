@@ -9,6 +9,9 @@ def find_best_response_bid(
     ctrs,
     candidate_bids,
 ):
+    if not candidate_bids:
+        raise ValueError("candidate_bids must not be empty")
+
     results = []
     best_bid = None
     best_utility = None

@@ -36,6 +36,15 @@ def generate_bidders(
 
 
 def generate_ctrs(num_slots, top_ctr, decay):
+    if num_slots < 0:
+        raise ValueError("num_slots must be non-negative")
+
+    if top_ctr < 0 or top_ctr > 1:
+        raise ValueError("top_ctr must be between 0 and 1")
+
+    if decay < 0 or decay > 1:
+        raise ValueError("decay must be between 0 and 1")
+
     ctrs = []
 
     for i in range(num_slots):

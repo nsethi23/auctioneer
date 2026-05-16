@@ -19,6 +19,42 @@ def test_run_repeated_comparisons_returns_requested_count():
     assert result["num_auctions"] == 5
 
 
+def test_run_repeated_comparisons_rejects_zero_auctions():
+    with pytest.raises(ValueError, match="num_auctions"):
+        run_repeated_comparisons(
+            num_auctions=0,
+            num_bidders=3,
+            ctrs=[0.6, 0.3],
+            min_value=1.0,
+            max_value=10.0,
+            rng=random.Random(123),
+        )
+
+
+def test_run_repeated_comparisons_rejects_negative_num_bidders():
+    with pytest.raises(ValueError, match="num_bidders"):
+        run_repeated_comparisons(
+            num_auctions=5,
+            num_bidders=-1,
+            ctrs=[0.6, 0.3],
+            min_value=1.0,
+            max_value=10.0,
+            rng=random.Random(123),
+        )
+
+
+def test_run_repeated_comparisons_rejects_inverted_value_range():
+    with pytest.raises(ValueError, match="min_value"):
+        run_repeated_comparisons(
+            num_auctions=5,
+            num_bidders=3,
+            ctrs=[0.6, 0.3],
+            min_value=10.0,
+            max_value=1.0,
+            rng=random.Random(123),
+        )
+
+
 def test_run_repeated_comparisons_includes_average_metrics():
     result = run_repeated_comparisons(
         num_auctions=5,

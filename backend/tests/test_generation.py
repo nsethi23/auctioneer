@@ -92,6 +92,31 @@ def test_generate_ctrs_with_zero_slots_returns_empty_list():
     assert generate_ctrs(num_slots=0, top_ctr=0.6, decay=0.5) == []
 
 
+def test_generate_ctrs_rejects_negative_num_slots():
+    with pytest.raises(ValueError, match="num_slots"):
+        generate_ctrs(num_slots=-1, top_ctr=0.6, decay=0.5)
+
+
+def test_generate_ctrs_rejects_top_ctr_below_zero():
+    with pytest.raises(ValueError, match="top_ctr"):
+        generate_ctrs(num_slots=3, top_ctr=-0.1, decay=0.5)
+
+
+def test_generate_ctrs_rejects_top_ctr_above_one():
+    with pytest.raises(ValueError, match="top_ctr"):
+        generate_ctrs(num_slots=3, top_ctr=1.1, decay=0.5)
+
+
+def test_generate_ctrs_rejects_decay_below_zero():
+    with pytest.raises(ValueError, match="decay"):
+        generate_ctrs(num_slots=3, top_ctr=0.6, decay=-0.1)
+
+
+def test_generate_ctrs_rejects_decay_above_one():
+    with pytest.raises(ValueError, match="decay"):
+        generate_ctrs(num_slots=3, top_ctr=0.6, decay=1.1)
+
+
 def test_generate_bidders_from_profiles_preserves_profile_ids():
     profiles = [
         {

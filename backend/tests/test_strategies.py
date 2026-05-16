@@ -24,3 +24,13 @@ def test_shaded_bid_with_factor_one_matches_truthful_bid():
 def test_shaded_bid_with_factor_zero_returns_zero():
     assert shaded_bid(10.0, 0.0) == pytest.approx(0.0)
     assert shaded_bid(7.5, 0.0) == pytest.approx(0.0)
+
+
+def test_shaded_bid_rejects_negative_shade_factor():
+    with pytest.raises(ValueError, match="shade_factor"):
+        shaded_bid(10.0, -0.1)
+
+
+def test_shaded_bid_rejects_shade_factor_above_one():
+    with pytest.raises(ValueError, match="shade_factor"):
+        shaded_bid(10.0, 1.1)

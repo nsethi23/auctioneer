@@ -24,6 +24,20 @@ def test_find_best_response_bid_returns_candidate_with_highest_utility():
     assert result["utility"] == pytest.approx(1.5)
 
 
+def test_find_best_response_bid_rejects_empty_candidate_bids():
+    with pytest.raises(ValueError, match="candidate_bids"):
+        find_best_response_bid(
+            bidder_id="A",
+            value=10.0,
+            other_bidders=[
+                {"id": "B", "value": 8.0, "bid": 8.0},
+                {"id": "C", "value": 5.0, "bid": 5.0},
+            ],
+            ctrs=[0.6, 0.3],
+            candidate_bids=[],
+        )
+
+
 def test_find_best_response_bid_returns_result_for_each_candidate():
     candidate_bids = [0.0, 5.0, 6.0, 8.0, 10.0]
 
