@@ -33,6 +33,13 @@ def bidder_to_dict(bidder):
     return result
 
 
+def normalize_bidder(bidder):
+    if isinstance(bidder, Bidder):
+        return bidder_to_dict(bidder)
+
+    return bidder
+
+
 def allocation_to_dict(allocation):
     return {
         "bidder_id": allocation.bidder_id,

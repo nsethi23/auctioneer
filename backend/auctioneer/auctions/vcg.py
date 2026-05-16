@@ -1,3 +1,6 @@
+from auctioneer.models import normalize_bidder
+
+
 def compute_welfare(sorted_bidders, ctrs):
     welfare = 0.0
 
@@ -13,6 +16,8 @@ def compute_welfare(sorted_bidders, ctrs):
 
 
 def run_vcg_auction(bidders, ctrs):
+    bidders = [normalize_bidder(bidder) for bidder in bidders]
+
     allocations = []
 
     revenue = 0.0

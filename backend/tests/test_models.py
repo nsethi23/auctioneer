@@ -5,6 +5,7 @@ from auctioneer.models import (
     Bidder,
     allocation_to_dict,
     bidder_to_dict,
+    normalize_bidder,
 )
 
 
@@ -62,6 +63,23 @@ def test_bidder_to_dict_includes_strategy_when_present():
         "bid": 8.0,
         "strategy": "shaded",
     }
+
+
+def test_normalize_bidder_converts_bidder_model_to_dict():
+    bidder = Bidder(id="A", value=10.0, bid=8.0, strategy="shaded")
+
+    assert normalize_bidder(bidder) == {
+        "id": "A",
+        "value": 10.0,
+        "bid": 8.0,
+        "strategy": "shaded",
+    }
+
+
+def test_normalize_bidder_leaves_existing_dict_unchanged():
+    bidder = {"id": "A", "value": 10.0, "bid": 8.0}
+
+    assert normalize_bidder(bidder) is bidder
 
 
 def test_allocation_to_dict_preserves_all_fields():

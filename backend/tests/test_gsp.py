@@ -1,6 +1,7 @@
 import pytest
 
 from auctioneer.auctions.gsp import run_gsp_auction
+from auctioneer.models import Bidder
 
 
 def test_run_gsp_auction_three_bidders_two_slots():
@@ -103,3 +104,18 @@ def test_run_gsp_auction_with_more_slots_than_bidders():
     assert result["revenue"] == pytest.approx(4.8)
     assert result["welfare"] == pytest.approx(8.4)
     assert result["bidder_surplus"] == pytest.approx(3.6)
+
+
+def test_run_gsp_auction_accepts_bidder_models():
+    bidders = [
+        Bidder(id="A", value=10.0, bid=10.0),
+        Bidder(id="B", value=8.0, bid=8.0),
+        Bidder(id="C", value=5.0, bid=5.0),
+    ]
+
+    result = run_gsp_auction(bidders, [0.6, 0.3])
+
+    assert result["allocations"][0]["bidder_id"] == "A"
+    assert result["allocations"][1]["bidder_id"] == "B"
+    assert result["revenue"] == pytest.approx(6.3)
+    assert result["welfare"] == pytest.approx(8.4)

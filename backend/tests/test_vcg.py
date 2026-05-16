@@ -1,6 +1,7 @@
 import pytest
 
 from auctioneer.auctions.vcg import run_vcg_auction
+from auctioneer.models import Bidder
 
 
 def test_run_vcg_auction_three_bidders_two_slots():
@@ -103,3 +104,18 @@ def test_run_vcg_auction_with_more_slots_than_bidders():
     assert result["revenue"] == pytest.approx(2.4)
     assert result["welfare"] == pytest.approx(8.4)
     assert result["bidder_surplus"] == pytest.approx(6.0)
+
+
+def test_run_vcg_auction_accepts_bidder_models():
+    bidders = [
+        Bidder(id="A", value=10.0, bid=10.0),
+        Bidder(id="B", value=8.0, bid=8.0),
+        Bidder(id="C", value=5.0, bid=5.0),
+    ]
+
+    result = run_vcg_auction(bidders, [0.6, 0.3])
+
+    assert result["allocations"][0]["bidder_id"] == "A"
+    assert result["allocations"][1]["bidder_id"] == "B"
+    assert result["revenue"] == pytest.approx(5.4)
+    assert result["welfare"] == pytest.approx(8.4)

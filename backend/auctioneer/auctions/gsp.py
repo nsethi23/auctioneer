@@ -1,4 +1,9 @@
+from auctioneer.models import normalize_bidder
+
+
 def run_gsp_auction(bidders, ctrs):
+    bidders = [normalize_bidder(bidder) for bidder in bidders]
+
     allocations = []
 
     revenue = 0.0
