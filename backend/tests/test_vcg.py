@@ -89,6 +89,18 @@ def test_run_vcg_auction_sorts_bidders_by_bid():
     assert result["allocations"][1]["bidder_id"] == "B"
 
 
+def test_run_vcg_auction_breaks_bid_ties_by_bidder_id():
+    bidders = [
+        {"id": "B", "value": 8.0, "bid": 10.0},
+        {"id": "A", "value": 10.0, "bid": 10.0},
+    ]
+
+    result = run_vcg_auction(bidders, [0.6, 0.3])
+
+    assert result["allocations"][0]["bidder_id"] == "A"
+    assert result["allocations"][1]["bidder_id"] == "B"
+
+
 def test_run_vcg_auction_with_more_slots_than_bidders():
     bidders = [
         {"id": "A", "value": 10.0, "bid": 10.0},

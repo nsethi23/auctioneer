@@ -22,7 +22,7 @@ def test_check_gsp_nash_equilibrium_detects_profitable_deviation():
         {
             "bidder_id": "A",
             "current_bid": 10.0,
-            "best_bid": 6.0,
+            "best_bid": 5.0,
             "current_utility": pytest.approx(1.2),
             "best_utility": pytest.approx(1.5),
             "utility_gain": pytest.approx(0.3),

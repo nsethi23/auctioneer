@@ -20,7 +20,7 @@ def test_find_best_response_bid_returns_candidate_with_highest_utility():
         candidate_bids=[0.0, 5.0, 6.0, 8.0, 10.0],
     )
 
-    assert result["bid"] == pytest.approx(6.0)
+    assert result["bid"] == pytest.approx(5.0)
     assert result["utility"] == pytest.approx(1.5)
 
 
@@ -136,7 +136,7 @@ def test_generate_best_response_curve_uses_clear_best_response_keys():
     )
 
     assert result[0]["value"] == pytest.approx(10.0)
-    assert result[0]["best_bid"] == pytest.approx(6.0)
+    assert result[0]["best_bid"] == pytest.approx(5.0)
     assert result[0]["best_utility"] == pytest.approx(1.5)
     assert "results" in result[0]
 
@@ -155,5 +155,5 @@ def test_generate_best_response_curve_can_show_best_bid_changes_by_value():
 
     assert result[0]["best_bid"] == pytest.approx(0.0)
     assert result[0]["best_utility"] == pytest.approx(0.0)
-    assert result[1]["best_bid"] == pytest.approx(6.0)
+    assert result[1]["best_bid"] == pytest.approx(5.0)
     assert result[1]["best_utility"] == pytest.approx(1.5)

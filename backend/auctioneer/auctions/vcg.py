@@ -27,7 +27,7 @@ def run_vcg_auction(bidders, ctrs, reserve_price=0.0):
     # Reserve prices remove low bidders before allocation and externality pricing.
     eligible_bidders = [bidder for bidder in bidders if bidder["bid"] >= reserve_price]
 
-    sorted_bidders = sorted(eligible_bidders, key=lambda b: b["bid"], reverse=True)
+    sorted_bidders = sorted(eligible_bidders, key=lambda b: (-b["bid"], b["id"]))
 
     for i, bidder in enumerate(sorted_bidders):
         if i >= len(ctrs):

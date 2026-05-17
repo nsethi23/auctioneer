@@ -3,7 +3,7 @@ import pytest
 from auctioneer.agents.nash_dynamics import run_best_response_dynamics
 
 
-def test_run_best_response_dynamics_converges_from_non_equilibrium_profile():
+def test_run_best_response_dynamics_records_non_convergence_when_updates_cycle():
     bidders = [
         {"id": "A", "value": 10.0, "bid": 10.0},
         {"id": "B", "value": 8.0, "bid": 8.0},
@@ -17,13 +17,13 @@ def test_run_best_response_dynamics_converges_from_non_equilibrium_profile():
         max_rounds=5,
     )
 
-    assert result["converged"] is True
-    assert result["rounds_run"] == 2
+    assert result["converged"] is False
+    assert result["rounds_run"] == 5
     assert result["history"][0]["is_equilibrium"] is False
-    assert result["history"][-1]["is_equilibrium"] is True
+    assert result["history"][-1]["is_equilibrium"] is False
     assert result["final_bidders"] == [
         {"id": "A", "value": 10.0, "bid": 5.0},
-        {"id": "B", "value": 8.0, "bid": 5.0},
+        {"id": "B", "value": 8.0, "bid": 6.0},
         {"id": "C", "value": 5.0, "bid": 0.0},
     ]
 

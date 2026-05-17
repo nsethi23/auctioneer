@@ -56,8 +56,7 @@ def run_gsp_auction(
     # With quality scores enabled, ad rank is bid times quality.
     sorted_bidders = sorted(
         eligible_bidders,
-        key=lambda b: get_rank_score(b, use_quality_scores),
-        reverse=True,
+        key=lambda b: (-get_rank_score(b, use_quality_scores), b["id"]),
     )
 
     # Assign winners in ranked order until we run out of slots.

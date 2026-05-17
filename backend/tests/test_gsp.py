@@ -89,6 +89,18 @@ def test_run_gsp_auction_sorts_bidders_by_bid():
     assert result["allocations"][1]["bidder_id"] == "B"
 
 
+def test_run_gsp_auction_breaks_bid_ties_by_bidder_id():
+    bidders = [
+        {"id": "B", "value": 8.0, "bid": 10.0},
+        {"id": "A", "value": 10.0, "bid": 10.0},
+    ]
+
+    result = run_gsp_auction(bidders, [0.6, 0.3])
+
+    assert result["allocations"][0]["bidder_id"] == "A"
+    assert result["allocations"][1]["bidder_id"] == "B"
+
+
 def test_run_gsp_auction_with_more_slots_than_bidders():
     bidders = [
         {"id": "A", "value": 10.0, "bid": 10.0},
@@ -214,6 +226,18 @@ def test_run_gsp_auction_quality_scores_can_change_ranking():
     assert result["allocations"][0]["rank_score"] == pytest.approx(14.0)
     assert result["allocations"][0]["payment"] == pytest.approx(3.0)
     assert result["allocations"][1]["bidder_id"] == "A"
+
+
+def test_run_gsp_auction_breaks_quality_score_rank_ties_by_bidder_id():
+    bidders = [
+        {"id": "B", "value": 8.0, "bid": 5.0, "quality_score": 2.0},
+        {"id": "A", "value": 10.0, "bid": 10.0, "quality_score": 1.0},
+    ]
+
+    result = run_gsp_auction(bidders, [0.6, 0.3], use_quality_scores=True)
+
+    assert result["allocations"][0]["bidder_id"] == "A"
+    assert result["allocations"][1]["bidder_id"] == "B"
 
 
 def test_run_gsp_auction_missing_quality_score_defaults_to_one():
