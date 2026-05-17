@@ -1,8 +1,48 @@
 from auctioneer.models import normalize_bidder
 
 
-def run_gsp_auction(bidders, ctrs, reserve_price=0.0):
+def get_quality_score(bidder):
+    return bidder.get("quality_score", 1.0)
+
+
+def get_rank_score(bidder, use_quality_scores):
+    if not use_quality_scores:
+        return bidder["bid"]
+
+    return bidder["bid"] * get_quality_score(bidder)
+
+
+def get_gsp_price_per_click(
+    bidder,
+    sorted_bidders,
+    bidder_index,
+    reserve_price,
+    use_quality_scores,
+):
+    if bidder_index + 1 < len(sorted_bidders):
+        next_bidder = sorted_bidders[bidder_index + 1]
+
+        if use_quality_scores:
+            next_rank_score = get_rank_score(next_bidder, use_quality_scores=True)
+            return max(next_rank_score / get_quality_score(bidder), reserve_price)
+
+        return max(next_bidder["bid"], reserve_price)
+
+    return reserve_price
+
+
+def run_gsp_auction(
+    bidders,
+    ctrs,
+    reserve_price=0.0,
+    use_quality_scores=False,
+):
     bidders = [normalize_bidder(bidder) for bidder in bidders]
+
+    if use_quality_scores:
+        for bidder in bidders:
+            if get_quality_score(bidder) <= 0:
+                raise ValueError("quality_score must be positive")
 
     allocations = []
 
@@ -13,8 +53,12 @@ def run_gsp_auction(bidders, ctrs, reserve_price=0.0):
     # Reserve prices make low bids ineligible before ranking happens.
     eligible_bidders = [bidder for bidder in bidders if bidder["bid"] >= reserve_price]
 
-    # GSP ranks advertisers by bid: highest bidder gets the highest-CTR slot.
-    sorted_bidders = sorted(eligible_bidders, key=lambda b: b["bid"], reverse=True)
+    # With quality scores enabled, ad rank is bid times quality.
+    sorted_bidders = sorted(
+        eligible_bidders,
+        key=lambda b: get_rank_score(b, use_quality_scores),
+        reverse=True,
+    )
 
     # Assign winners in ranked order until we run out of slots.
     for i, bidder in enumerate(sorted_bidders):
@@ -22,16 +66,19 @@ def run_gsp_auction(bidders, ctrs, reserve_price=0.0):
             break
 
         ctr = ctrs[i]
-        if i + 1 < len(sorted_bidders):
-            next_bid = sorted_bidders[i + 1]["bid"]
-        else:
-            next_bid = reserve_price
+        price_per_click = get_gsp_price_per_click(
+            bidder=bidder,
+            sorted_bidders=sorted_bidders,
+            bidder_index=i,
+            reserve_price=reserve_price,
+            use_quality_scores=use_quality_scores,
+        )
 
         # Expected value is the bidder's private value scaled by slot click rate.
         realized_value = ctr * bidder["value"]
 
-        # Winners pay at least the reserve price, even without a next bidder.
-        payment = ctr * max(next_bid, reserve_price)
+        # Payment is expected clicks times the generalized second price per click.
+        payment = ctr * price_per_click
 
         # Bidder surplus/profit from winning this slot.
         utility = realized_value - payment
@@ -43,6 +90,8 @@ def run_gsp_auction(bidders, ctrs, reserve_price=0.0):
                 "ctr": ctr,
                 "value": bidder["value"],
                 "bid": bidder["bid"],
+                "quality_score": get_quality_score(bidder),
+                "rank_score": get_rank_score(bidder, use_quality_scores),
                 "payment": payment,
                 "utility": utility,
             }
