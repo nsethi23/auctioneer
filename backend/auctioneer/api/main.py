@@ -4,6 +4,9 @@ from pydantic import BaseModel
 from auctioneer.agents.nash import check_gsp_nash_equilibrium
 from auctioneer.agents.q_learning_evaluation import track_q_learning_convergence
 from auctioneer.simulation.comparison import compare_gsp_and_vcg
+from auctioneer.simulation.statistical_runner import (
+    run_repeated_comparisons_with_confidence,
+)
 
 app = FastAPI(title="Auctioneer API")
 
@@ -44,6 +47,16 @@ class RLConvergenceRequest(BaseModel):
     learning_rate: float = 0.1
     discount_factor: float = 0.0
     epsilon: float = 0.1
+
+
+class StatisticalSimulationRequest(BaseModel):
+    num_auctions: int
+    num_bidders: int
+    ctrs: list[float]
+    min_value: float
+    max_value: float
+    num_resamples: int = 1000
+    confidence: float = 0.95
 
 
 def bidder_input_to_dict(bidder):
@@ -95,4 +108,17 @@ def track_rl_convergence(request: RLConvergenceRequest):
         learning_rate=request.learning_rate,
         discount_factor=request.discount_factor,
         epsilon=request.epsilon,
+    )
+
+
+@app.post("/simulation/statistical")
+def run_statistical_simulation(request: StatisticalSimulationRequest):
+    return run_repeated_comparisons_with_confidence(
+        num_auctions=request.num_auctions,
+        num_bidders=request.num_bidders,
+        ctrs=request.ctrs,
+        min_value=request.min_value,
+        max_value=request.max_value,
+        num_resamples=request.num_resamples,
+        confidence=request.confidence,
     )

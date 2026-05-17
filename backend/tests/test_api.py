@@ -212,3 +212,62 @@ def test_rl_convergence_rejects_missing_training_fields():
     )
 
     assert response.status_code == 422
+
+
+def test_statistical_simulation_returns_confidence_metrics():
+    response = client.post(
+        "/simulation/statistical",
+        json={
+            "num_auctions": 5,
+            "num_bidders": 3,
+            "ctrs": [0.6, 0.3],
+            "min_value": 1.0,
+            "max_value": 10.0,
+            "num_resamples": 20,
+            "confidence": 0.8,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["num_auctions"] == 5
+    assert body["confidence"] == pytest.approx(0.8)
+    assert body["num_resamples"] == 20
+    assert "gsp" in body["metrics"]
+    assert "vcg" in body["metrics"]
+    assert "difference" in body["metrics"]
+    assert "mean" in body["metrics"]["gsp"]["revenue"]
+    assert "lower" in body["metrics"]["gsp"]["revenue"]
+    assert "upper" in body["metrics"]["gsp"]["revenue"]
+
+
+def test_statistical_simulation_accepts_default_bootstrap_settings():
+    response = client.post(
+        "/simulation/statistical",
+        json={
+            "num_auctions": 2,
+            "num_bidders": 2,
+            "ctrs": [0.6],
+            "min_value": 1.0,
+            "max_value": 10.0,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["confidence"] == pytest.approx(0.95)
+    assert response.json()["num_resamples"] == 1000
+
+
+def test_statistical_simulation_rejects_missing_required_fields():
+    response = client.post(
+        "/simulation/statistical",
+        json={
+            "num_auctions": 5,
+            "num_bidders": 3,
+            "ctrs": [0.6, 0.3],
+            "min_value": 1.0,
+        },
+    )
+
+    assert response.status_code == 422
