@@ -119,3 +119,72 @@ def test_run_gsp_auction_accepts_bidder_models():
     assert result["allocations"][1]["bidder_id"] == "B"
     assert result["revenue"] == pytest.approx(6.3)
     assert result["welfare"] == pytest.approx(8.4)
+
+
+def test_run_gsp_auction_reserve_filters_out_low_bidders():
+    bidders = [
+        {"id": "A", "value": 10.0, "bid": 10.0},
+        {"id": "B", "value": 8.0, "bid": 5.0},
+        {"id": "C", "value": 7.0, "bid": 4.0},
+    ]
+
+    result = run_gsp_auction(bidders, [0.6, 0.3], reserve_price=6.0)
+
+    assert len(result["allocations"]) == 1
+    assert result["allocations"][0]["bidder_id"] == "A"
+
+
+def test_run_gsp_auction_single_eligible_winner_pays_reserve():
+    bidders = [
+        {"id": "A", "value": 10.0, "bid": 10.0},
+        {"id": "B", "value": 8.0, "bid": 5.0},
+    ]
+
+    result = run_gsp_auction(bidders, [0.6, 0.3], reserve_price=6.0)
+
+    assert result["allocations"][0]["payment"] == pytest.approx(3.6)
+    assert result["allocations"][0]["utility"] == pytest.approx(2.4)
+    assert result["revenue"] == pytest.approx(3.6)
+    assert result["welfare"] == pytest.approx(6.0)
+    assert result["bidder_surplus"] == pytest.approx(2.4)
+
+
+def test_run_gsp_auction_reserve_sets_minimum_price_with_multiple_winners():
+    bidders = [
+        {"id": "A", "value": 10.0, "bid": 10.0},
+        {"id": "B", "value": 8.0, "bid": 8.0},
+    ]
+
+    result = run_gsp_auction(bidders, [0.6, 0.3], reserve_price=6.0)
+
+    assert result["allocations"][0]["payment"] == pytest.approx(4.8)
+    assert result["allocations"][1]["payment"] == pytest.approx(1.8)
+    assert result["revenue"] == pytest.approx(6.6)
+
+
+def test_run_gsp_auction_reserve_can_leave_all_slots_unfilled():
+    bidders = [
+        {"id": "A", "value": 10.0, "bid": 5.0},
+        {"id": "B", "value": 8.0, "bid": 4.0},
+    ]
+
+    result = run_gsp_auction(bidders, [0.6, 0.3], reserve_price=6.0)
+
+    assert result["allocations"] == []
+    assert result["revenue"] == pytest.approx(0.0)
+    assert result["welfare"] == pytest.approx(0.0)
+    assert result["bidder_surplus"] == pytest.approx(0.0)
+
+
+def test_run_gsp_auction_default_reserve_keeps_original_behavior():
+    bidders = [
+        {"id": "A", "value": 10.0, "bid": 10.0},
+        {"id": "B", "value": 8.0, "bid": 8.0},
+        {"id": "C", "value": 5.0, "bid": 5.0},
+    ]
+
+    result = run_gsp_auction(bidders, [0.6, 0.3])
+
+    assert result["revenue"] == pytest.approx(6.3)
+    assert result["welfare"] == pytest.approx(8.4)
+    assert result["bidder_surplus"] == pytest.approx(2.1)
