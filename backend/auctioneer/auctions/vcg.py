@@ -15,7 +15,7 @@ def compute_welfare(sorted_bidders, ctrs):
     return welfare
 
 
-def run_vcg_auction(bidders, ctrs):
+def run_vcg_auction(bidders, ctrs, reserve_price=0.0):
     bidders = [normalize_bidder(bidder) for bidder in bidders]
 
     allocations = []
@@ -24,7 +24,10 @@ def run_vcg_auction(bidders, ctrs):
     welfare = 0.0
     bidder_surplus = 0.0
 
-    sorted_bidders = sorted(bidders, key=lambda b: b["bid"], reverse=True)
+    # Reserve prices remove low bidders before allocation and externality pricing.
+    eligible_bidders = [bidder for bidder in bidders if bidder["bid"] >= reserve_price]
+
+    sorted_bidders = sorted(eligible_bidders, key=lambda b: b["bid"], reverse=True)
 
     for i, bidder in enumerate(sorted_bidders):
         if i >= len(ctrs):
@@ -43,8 +46,11 @@ def run_vcg_auction(bidders, ctrs):
         total_welfare_with_bidder = compute_welfare(sorted_bidders, ctrs)
         others_welfare_with_bidder = total_welfare_with_bidder - realized_value
 
-        # The payment is the externality imposed on everyone else.
-        payment = welfare_without_bidder - others_welfare_with_bidder
+        # The payment is the externality imposed on everyone else,
+        # bounded below by the reserve-scaled slot price.
+        externality_payment = welfare_without_bidder - others_welfare_with_bidder
+        reserve_payment = reserve_price * ctr
+        payment = max(externality_payment, reserve_payment)
         utility = realized_value - payment
 
         allocations.append(
