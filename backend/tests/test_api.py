@@ -146,3 +146,69 @@ def test_nash_check_rejects_missing_candidate_bids():
     )
 
     assert response.status_code == 422
+
+
+def test_rl_convergence_returns_best_response_checkpoints_and_history():
+    response = client.post(
+        "/rl/convergence",
+        json={
+            "bidder_id": "A",
+            "value": 10.0,
+            "other_bidders": [
+                {"id": "B", "value": 8.0, "bid": 8.0},
+                {"id": "C", "value": 5.0, "bid": 5.0},
+            ],
+            "ctrs": [0.6, 0.3],
+            "candidate_bids": [5.0],
+            "num_episodes": 3,
+            "checkpoint_interval": 1,
+            "learning_rate": 0.1,
+            "discount_factor": 0.0,
+            "epsilon": 0.0,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["best_response"]["bid"] == pytest.approx(5.0)
+    assert body["best_response"]["utility"] == pytest.approx(1.5)
+    assert len(body["checkpoints"]) == 3
+    assert len(body["history"]) == 3
+    assert body["checkpoints"][0]["learned_bid"] == pytest.approx(5.0)
+
+
+def test_rl_convergence_accepts_default_learning_parameters():
+    response = client.post(
+        "/rl/convergence",
+        json={
+            "bidder_id": "A",
+            "value": 10.0,
+            "other_bidders": [
+                {"id": "B", "value": 8.0, "bid": 8.0},
+            ],
+            "ctrs": [0.6],
+            "candidate_bids": [0.0, 8.0, 10.0],
+            "num_episodes": 2,
+            "checkpoint_interval": 1,
+        },
+    )
+
+    assert response.status_code == 200
+    assert "best_response" in response.json()
+
+
+def test_rl_convergence_rejects_missing_training_fields():
+    response = client.post(
+        "/rl/convergence",
+        json={
+            "bidder_id": "A",
+            "value": 10.0,
+            "other_bidders": [],
+            "ctrs": [0.6],
+            "candidate_bids": [0.0, 10.0],
+            "num_episodes": 2,
+        },
+    )
+
+    assert response.status_code == 422
