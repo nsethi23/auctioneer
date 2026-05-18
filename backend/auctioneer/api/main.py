@@ -3,6 +3,9 @@ from pydantic import BaseModel
 
 from auctioneer.agents.nash import check_gsp_nash_equilibrium
 from auctioneer.agents.q_learning_evaluation import track_q_learning_convergence
+from auctioneer.auctions.gsp import run_gsp_auction
+from auctioneer.auctions.vcg import run_vcg_auction
+from auctioneer.metrics.efficiency import compute_price_of_anarchy
 from auctioneer.simulation.comparison import compare_gsp_and_vcg
 from auctioneer.simulation.statistical_runner import (
     run_repeated_comparisons_with_confidence,
@@ -25,6 +28,24 @@ class BidderInput(BaseModel):
 
 
 class AuctionCompareRequest(BaseModel):
+    bidders: list[BidderInput]
+    ctrs: list[float]
+
+
+class GSPAuctionRequest(BaseModel):
+    bidders: list[BidderInput]
+    ctrs: list[float]
+    reserve_price: float = 0.0
+    use_quality_scores: bool = False
+
+
+class VCGAuctionRequest(BaseModel):
+    bidders: list[BidderInput]
+    ctrs: list[float]
+    reserve_price: float = 0.0
+
+
+class PriceOfAnarchyRequest(BaseModel):
     bidders: list[BidderInput]
     ctrs: list[float]
 
@@ -79,6 +100,35 @@ def bidder_input_to_dict(bidder):
 def compare_auction(request: AuctionCompareRequest):
     bidders = [bidder_input_to_dict(bidder) for bidder in request.bidders]
     return compare_gsp_and_vcg(bidders, request.ctrs)
+
+
+@app.post("/auction/gsp")
+def run_gsp(request: GSPAuctionRequest):
+    bidders = [bidder_input_to_dict(bidder) for bidder in request.bidders]
+
+    return run_gsp_auction(
+        bidders=bidders,
+        ctrs=request.ctrs,
+        reserve_price=request.reserve_price,
+        use_quality_scores=request.use_quality_scores,
+    )
+
+
+@app.post("/auction/vcg")
+def run_vcg(request: VCGAuctionRequest):
+    bidders = [bidder_input_to_dict(bidder) for bidder in request.bidders]
+
+    return run_vcg_auction(
+        bidders=bidders,
+        ctrs=request.ctrs,
+        reserve_price=request.reserve_price,
+    )
+
+
+@app.post("/metrics/price-of-anarchy")
+def compute_price_of_anarchy_metric(request: PriceOfAnarchyRequest):
+    bidders = [bidder_input_to_dict(bidder) for bidder in request.bidders]
+    return compute_price_of_anarchy(bidders, request.ctrs)
 
 
 @app.post("/nash/check")

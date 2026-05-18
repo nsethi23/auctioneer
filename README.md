@@ -104,6 +104,50 @@ Format code:
 python -m ruff format .
 ```
 
+Run the API server:
+
+```bash
+python -m uvicorn auctioneer.api.main:app --reload
+```
+
+Open the generated API docs:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+## API Endpoints
+
+The backend exposes the simulation engine through FastAPI:
+
+- `GET /health`: confirms the API is running.
+- `POST /auction/gsp`: runs a GSP auction, including optional reserve prices
+  and quality-score ranking.
+- `POST /auction/vcg`: runs a VCG auction, including optional reserve prices.
+- `POST /auction/compare`: runs GSP and VCG on the same bidder market and
+  returns revenue, welfare, and surplus differences.
+- `POST /metrics/price-of-anarchy`: compares optimal welfare against strategic
+  GSP welfare.
+- `POST /nash/check`: checks whether a bid profile has profitable unilateral
+  deviations over a candidate bid grid.
+- `POST /rl/convergence`: trains a Q-learning bidder and returns convergence
+  checkpoints against the analytical best response.
+- `POST /simulation/statistical`: runs repeated GSP/VCG simulations and returns
+  bootstrap confidence intervals.
+
+Example auction comparison request:
+
+```json
+{
+  "bidders": [
+    {"id": "A", "value": 10.0, "bid": 10.0},
+    {"id": "B", "value": 8.0, "bid": 8.0},
+    {"id": "C", "value": 5.0, "bid": 5.0}
+  ],
+  "ctrs": [0.6, 0.3]
+}
+```
+
 ## Project Direction
 
 Planned next steps:

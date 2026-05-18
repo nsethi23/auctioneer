@@ -92,6 +92,113 @@ def test_auction_compare_rejects_invalid_bidder_shape():
     assert response.status_code == 422
 
 
+def test_gsp_endpoint_runs_gsp_auction():
+    response = client.post(
+        "/auction/gsp",
+        json={
+            "bidders": [
+                {"id": "A", "value": 10.0, "bid": 10.0},
+                {"id": "B", "value": 8.0, "bid": 8.0},
+                {"id": "C", "value": 5.0, "bid": 5.0},
+            ],
+            "ctrs": [0.6, 0.3],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["revenue"] == pytest.approx(6.3)
+    assert response.json()["welfare"] == pytest.approx(8.4)
+
+
+def test_gsp_endpoint_accepts_reserve_and_quality_scores():
+    response = client.post(
+        "/auction/gsp",
+        json={
+            "bidders": [
+                {"id": "A", "value": 10.0, "bid": 10.0, "quality_score": 1.0},
+                {"id": "B", "value": 8.0, "bid": 7.0, "quality_score": 2.0},
+            ],
+            "ctrs": [0.6, 0.3],
+            "reserve_price": 6.0,
+            "use_quality_scores": True,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["allocations"][0]["bidder_id"] == "B"
+    assert response.json()["allocations"][0]["payment"] == pytest.approx(3.6)
+
+
+def test_vcg_endpoint_runs_vcg_auction():
+    response = client.post(
+        "/auction/vcg",
+        json={
+            "bidders": [
+                {"id": "A", "value": 10.0, "bid": 10.0},
+                {"id": "B", "value": 8.0, "bid": 8.0},
+                {"id": "C", "value": 5.0, "bid": 5.0},
+            ],
+            "ctrs": [0.6, 0.3],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["revenue"] == pytest.approx(5.4)
+    assert response.json()["welfare"] == pytest.approx(8.4)
+
+
+def test_vcg_endpoint_accepts_reserve_price():
+    response = client.post(
+        "/auction/vcg",
+        json={
+            "bidders": [
+                {"id": "A", "value": 10.0, "bid": 10.0},
+                {"id": "B", "value": 8.0, "bid": 5.0},
+            ],
+            "ctrs": [0.6, 0.3],
+            "reserve_price": 6.0,
+        },
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()["allocations"]) == 1
+    assert response.json()["revenue"] == pytest.approx(3.6)
+
+
+def test_price_of_anarchy_endpoint_returns_efficiency_metrics():
+    response = client.post(
+        "/metrics/price-of-anarchy",
+        json={
+            "bidders": [
+                {"id": "A", "value": 10.0, "bid": 1.0},
+                {"id": "B", "value": 8.0, "bid": 8.0},
+                {"id": "C", "value": 5.0, "bid": 5.0},
+            ],
+            "ctrs": [0.6, 0.3],
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["optimal_welfare"] == pytest.approx(8.4)
+    assert body["strategic_welfare"] == pytest.approx(6.3)
+    assert body["price_of_anarchy"] == pytest.approx(8.4 / 6.3)
+    assert body["welfare_loss"] == pytest.approx(2.1)
+
+
+def test_price_of_anarchy_endpoint_rejects_missing_ctrs():
+    response = client.post(
+        "/metrics/price-of-anarchy",
+        json={
+            "bidders": [
+                {"id": "A", "value": 10.0, "bid": 10.0},
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_nash_check_returns_equilibrium_status_and_deviations():
     response = client.post(
         "/nash/check",
