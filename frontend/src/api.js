@@ -32,6 +32,10 @@ export async function computePriceOfAnarchy(payload) {
   return postJson('/metrics/price-of-anarchy', payload, 'Price of anarchy')
 }
 
+export async function checkNashEquilibrium(payload) {
+  return postJson('/nash/check', payload, 'Nash equilibrium check')
+}
+
 export async function checkHealth() {
   const response = await fetch(`${API_BASE_URL}/health`)
 

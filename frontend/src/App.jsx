@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   checkHealth,
+  checkNashEquilibrium,
   compareAuctions,
   computePriceOfAnarchy,
   runGspAuction,
@@ -17,6 +18,8 @@ const sampleMarket = {
   ctrs: [0.6, 0.3],
   reserve_price: 0,
 }
+
+const defaultCandidateBids = '0, 5, 6, 8, 10'
 
 const metricLabels = {
   revenue: 'Revenue',
@@ -103,8 +106,16 @@ function AllocationTable({ allocations }) {
   )
 }
 
+function parseCandidateBids(candidateBidsText) {
+  return candidateBidsText
+    .split(',')
+    .map((bid) => Number(bid.trim()))
+    .filter((bid) => Number.isFinite(bid))
+}
+
 function App() {
   const [market, setMarket] = useState(sampleMarket)
+  const [candidateBidsText, setCandidateBidsText] = useState(defaultCandidateBids)
   const [result, setResult] = useState(null)
   const [resultMode, setResultMode] = useState('compare')
   const [apiStatus, setApiStatus] = useState('checking')
@@ -154,6 +165,7 @@ function App() {
 
   function resetMarket() {
     setMarket(sampleMarket)
+    setCandidateBidsText(defaultCandidateBids)
     setResult(null)
     setError('')
   }
@@ -199,6 +211,23 @@ function App() {
     setResultMode(mode)
 
     try {
+      if (mode === 'nash') {
+        const candidateBids = parseCandidateBids(candidateBidsText)
+
+        if (candidateBids.length === 0) {
+          throw new Error('Enter at least one candidate bid')
+        }
+
+        setResult(
+          await checkNashEquilibrium({
+            bidders: market.bidders,
+            ctrs: market.ctrs,
+            candidate_bids: candidateBids,
+          }),
+        )
+        return
+      }
+
       if (mode === 'gsp') {
         setResult(
           await runGspAuction({
@@ -295,11 +324,37 @@ function App() {
               >
                 Efficiency loss
               </button>
+              <button
+                type="button"
+                className={resultMode === 'nash' ? 'mode-button active' : 'mode-button'}
+                onClick={() => runExperiment('nash')}
+                disabled={isLoading}
+              >
+                Nash check
+              </button>
             </div>
             <p className="mode-note">
-              GSP uses reserve and quality scores. VCG uses reserve. Efficiency loss compares
-              optimal welfare against strategic GSP welfare.
+              GSP uses reserve and quality scores. VCG uses reserve. Nash checks whether bidders
+              can improve by changing only their own bid.
             </p>
+          </div>
+
+          <div className="input-section">
+            <div className="section-label">
+              <span>Candidate bids</span>
+              <small>Comma-separated grid for Nash and best response</small>
+            </div>
+            <label className="market-input">
+              <span>Bid grid</span>
+              <input
+                type="text"
+                value={candidateBidsText}
+                onChange={(event) => {
+                  setCandidateBidsText(event.target.value)
+                  setResult(null)
+                }}
+              />
+            </label>
           </div>
 
           <div className="input-section">
@@ -391,14 +446,18 @@ function App() {
                   ? 'GSP vs VCG'
                   : resultMode === 'poa'
                     ? 'Efficiency'
-                    : resultMode.toUpperCase()}
+                    : resultMode === 'nash'
+                      ? 'Nash'
+                      : resultMode.toUpperCase()}
               </p>
               <h2>
                 {resultMode === 'compare'
                   ? 'Mechanism comparison'
                   : resultMode === 'poa'
                     ? 'Price of anarchy'
-                    : 'Auction result'}
+                    : resultMode === 'nash'
+                      ? 'Equilibrium check'
+                      : 'Auction result'}
               </h2>
             </div>
             <span className={result ? 'status ready' : 'status'}>
@@ -459,6 +518,47 @@ function App() {
                       <SingleMetricRow key={row.label} label={row.label} value={row.value} />
                     ))}
                   </div>
+                </div>
+              ) : resultMode === 'nash' ? (
+                <div className="nash-result">
+                  <div
+                    className={
+                      result.is_equilibrium ? 'nash-summary equilibrium' : 'nash-summary deviation'
+                    }
+                  >
+                    <span>{result.is_equilibrium ? 'Equilibrium' : 'Profitable deviation'}</span>
+                    <strong>
+                      {result.is_equilibrium ? 'No bidder can improve' : 'Deviation found'}
+                    </strong>
+                    <small>
+                      Maximum utility gain: {formatNumber(result.max_utility_gain)} over the
+                      candidate bid grid.
+                    </small>
+                  </div>
+
+                  {result.deviations.length > 0 ? (
+                    <div className="deviation-table">
+                      <div className="deviation-row table-head">
+                        <span>Bidder</span>
+                        <span>Current bid</span>
+                        <span>Best bid</span>
+                        <span>Gain</span>
+                      </div>
+                      {result.deviations.map((deviation) => (
+                        <div className="deviation-row" key={deviation.bidder_id}>
+                          <span>{deviation.bidder_id}</span>
+                          <span>{formatNumber(deviation.current_bid)}</span>
+                          <span>{formatNumber(deviation.best_bid)}</span>
+                          <span className="positive">{formatNumber(deviation.utility_gain)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-state compact">
+                      <strong>No profitable deviations</strong>
+                      <span>The current bids pass this candidate-grid Nash check.</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="single-result">
