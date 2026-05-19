@@ -167,6 +167,13 @@ button {
   background: oklch(42% 0.13 245);
 }
 
+.mode-note {
+  margin: 0;
+  color: oklch(44% 0.035 250);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 button:hover {
   background: oklch(36% 0.13 245);
 }
@@ -267,7 +274,7 @@ button:disabled {
 
 .bidder-editor {
   display: grid;
-  grid-template-columns: 34px 1fr 1fr;
+  grid-template-columns: 34px repeat(3, minmax(0, 1fr));
   align-items: end;
   gap: 10px;
   border: 1px solid oklch(86% 0.014 250);
@@ -298,7 +305,7 @@ button:disabled {
 
 .bidder {
   display: grid;
-  grid-template-columns: 44px 1fr 1fr;
+  grid-template-columns: 44px repeat(3, minmax(0, 1fr));
   align-items: center;
   gap: 10px;
   padding: 12px 14px;

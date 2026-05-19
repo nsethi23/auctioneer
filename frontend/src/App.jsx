@@ -4,11 +4,12 @@ import './App.css'
 
 const sampleMarket = {
   bidders: [
-    { id: 'A', value: 10, bid: 10 },
-    { id: 'B', value: 8, bid: 8 },
-    { id: 'C', value: 5, bid: 5 },
+    { id: 'A', value: 10, bid: 10, quality_score: 1 },
+    { id: 'B', value: 8, bid: 8, quality_score: 1 },
+    { id: 'C', value: 5, bid: 5, quality_score: 1 },
   ],
   ctrs: [0.6, 0.3],
+  reserve_price: 0,
 }
 
 const metricLabels = {
@@ -171,7 +172,12 @@ function App() {
 
     try {
       if (mode === 'gsp') {
-        setResult(await runGspAuction(market))
+        setResult(
+          await runGspAuction({
+            ...market,
+            use_quality_scores: true,
+          }),
+        )
       } else if (mode === 'vcg') {
         setResult(await runVcgAuction(market))
       } else {
@@ -247,6 +253,29 @@ function App() {
                 VCG only
               </button>
             </div>
+            <p className="mode-note">
+              GSP uses reserve and quality scores. VCG uses reserve. Comparison uses the base
+              GSP/VCG endpoint.
+            </p>
+          </div>
+
+          <div className="input-section">
+            <div className="section-label">
+              <span>Pricing constraint</span>
+              <small>Minimum bid for allocation</small>
+            </div>
+            <MarketInput
+              label="Reserve price"
+              value={market.reserve_price}
+              step="0.5"
+              onChange={(value) => {
+                setMarket((currentMarket) => ({
+                  ...currentMarket,
+                  reserve_price: value,
+                }))
+                setResult(null)
+              }}
+            />
           </div>
 
           <div className="input-section">
@@ -286,6 +315,12 @@ function App() {
                     value={bidder.bid}
                     onChange={(value) => updateBidder(index, 'bid', value)}
                   />
+                  <MarketInput
+                    label="Quality"
+                    value={bidder.quality_score}
+                    step="0.1"
+                    onChange={(value) => updateBidder(index, 'quality_score', value)}
+                  />
                 </div>
               ))}
             </div>
@@ -297,6 +332,7 @@ function App() {
                 <strong>{bidder.id}</strong>
                 <span>value {formatNumber(bidder.value)}</span>
                 <span>bid {formatNumber(bidder.bid)}</span>
+                <span>quality {formatNumber(bidder.quality_score)}</span>
               </div>
             ))}
           </div>
