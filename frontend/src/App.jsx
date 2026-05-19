@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   checkHealth,
   checkNashEquilibrium,
   compareAuctions,
   computeBestResponse,
+  computeBestResponseCurve,
   computePriceOfAnarchy,
   runGspAuction,
   runVcgAuction,
@@ -22,6 +23,7 @@ const sampleMarket = {
 }
 
 const defaultCandidateBids = '0, 5, 6, 8, 10'
+const defaultValueGrid = '4, 6, 8, 10, 12'
 
 const defaultRlSettings = {
   num_episodes: 100,
@@ -286,6 +288,56 @@ function RlConvergenceCurve({ checkpoints }) {
   )
 }
 
+function BestResponseHeatmap({ curve, candidateBids }) {
+  const allUtilities = curve.flatMap((entry) => entry.results.map((result) => result.utility))
+  const maxUtility = Math.max(...allUtilities, 0)
+  const minUtility = Math.min(...allUtilities, 0)
+  const utilityRange = maxUtility - minUtility || 1
+
+  return (
+    <div className="heatmap-panel">
+      <div
+        className="heatmap-grid"
+        style={{ gridTemplateColumns: `96px repeat(${candidateBids.length}, minmax(64px, 1fr))` }}
+      >
+        <div className="heatmap-corner">Value / bid</div>
+        {candidateBids.map((bid) => (
+          <div className="heatmap-axis" key={`bid-${bid}`}>
+            {formatNumber(bid)}
+          </div>
+        ))}
+        {curve.map((entry) => (
+          <Fragment key={entry.value}>
+            <div className="heatmap-axis value-axis" key={`value-${entry.value}`}>
+              {formatNumber(entry.value)}
+            </div>
+            {candidateBids.map((bid) => {
+              const cell = entry.results.find((candidate) => candidate.bid === bid)
+              const utility = cell?.utility ?? 0
+              const intensity = (utility - minUtility) / utilityRange
+              const lightness = 96 - intensity * 42
+
+              return (
+                <div
+                  className={entry.best_bid === bid ? 'heatmap-cell best-cell' : 'heatmap-cell'}
+                  key={`${entry.value}-${bid}`}
+                  style={{ background: `oklch(${lightness}% 0.12 245)` }}
+                  title={`value ${formatNumber(entry.value)}, bid ${formatNumber(bid)}, utility ${formatNumber(utility)}`}
+                >
+                  {formatNumber(utility)}
+                </div>
+              )
+            })}
+          </Fragment>
+        ))}
+      </div>
+      <div className="heatmap-note">
+        Darker cells have higher utility. Outlined cells are best-response bids for that value.
+      </div>
+    </div>
+  )
+}
+
 function parseCandidateBids(candidateBidsText) {
   return candidateBidsText
     .split(',')
@@ -293,9 +345,17 @@ function parseCandidateBids(candidateBidsText) {
     .filter((bid) => Number.isFinite(bid))
 }
 
+function parseNumberGrid(text) {
+  return text
+    .split(',')
+    .map((value) => Number(value.trim()))
+    .filter((value) => Number.isFinite(value))
+}
+
 function App() {
   const [market, setMarket] = useState(sampleMarket)
   const [candidateBidsText, setCandidateBidsText] = useState(defaultCandidateBids)
+  const [valueGridText, setValueGridText] = useState(defaultValueGrid)
   const [selectedBidderId, setSelectedBidderId] = useState(sampleMarket.bidders[0].id)
   const [rlSettings, setRlSettings] = useState(defaultRlSettings)
   const [result, setResult] = useState(null)
@@ -348,6 +408,7 @@ function App() {
   function resetMarket() {
     setMarket(sampleMarket)
     setCandidateBidsText(defaultCandidateBids)
+    setValueGridText(defaultValueGrid)
     setSelectedBidderId(sampleMarket.bidders[0].id)
     setRlSettings(defaultRlSettings)
     setResult(null)
@@ -403,6 +464,14 @@ function App() {
     }
 
     return result.checkpoints
+  }, [result, resultMode])
+
+  const heatmapCurve = useMemo(() => {
+    if (!result || resultMode !== 'heatmap') {
+      return []
+    }
+
+    return result.curve
   }, [result, resultMode])
 
   function updateRlSetting(field, value) {
@@ -474,6 +543,30 @@ function App() {
             ctrs: market.ctrs,
             candidate_bids: candidateBids,
             ...rlSettings,
+          }),
+        )
+        return
+      }
+
+      if (mode === 'heatmap') {
+        const candidateBids = parseCandidateBids(candidateBidsText)
+        const values = parseNumberGrid(valueGridText)
+
+        if (candidateBids.length === 0) {
+          throw new Error('Enter at least one candidate bid')
+        }
+
+        if (values.length === 0) {
+          throw new Error('Enter at least one private value')
+        }
+
+        setResult(
+          await computeBestResponseCurve({
+            bidder_id: selectedBidderId,
+            bidders: market.bidders,
+            ctrs: market.ctrs,
+            values,
+            candidate_bids: candidateBids,
           }),
         )
         return
@@ -599,10 +692,17 @@ function App() {
               >
                 RL convergence
               </button>
+              <button
+                type="button"
+                className={resultMode === 'heatmap' ? 'mode-button active' : 'mode-button'}
+                onClick={() => runExperiment('heatmap')}
+                disabled={isLoading}
+              >
+                Heatmap
+              </button>
             </div>
             <p className="mode-note">
-              RL convergence trains the selected bidder from auction rewards, then compares learned
-              bids against the analytical best response.
+              Heatmap sweeps private value and candidate bid to show where utility is highest.
             </p>
           </div>
 
@@ -633,6 +733,24 @@ function App() {
                 }}
               />
             </div>
+          </div>
+
+          <div className="input-section">
+            <div className="section-label">
+              <span>Heatmap values</span>
+              <small>Private value grid for the selected bidder</small>
+            </div>
+            <label className="market-input">
+              <span>Value grid</span>
+              <input
+                type="text"
+                value={valueGridText}
+                onChange={(event) => {
+                  setValueGridText(event.target.value)
+                  setResult(null)
+                }}
+              />
+            </label>
           </div>
 
           <div className="input-section">
@@ -767,6 +885,8 @@ function App() {
                         ? 'Best response'
                         : resultMode === 'rl'
                           ? 'RL'
+                          : resultMode === 'heatmap'
+                            ? 'Heatmap'
                           : resultMode.toUpperCase()}
               </p>
               <h2>
@@ -780,6 +900,8 @@ function App() {
                         ? 'Bid search'
                         : resultMode === 'rl'
                           ? 'Convergence'
+                          : resultMode === 'heatmap'
+                            ? 'Best-response heatmap'
                           : 'Auction result'}
               </h2>
             </div>
@@ -955,6 +1077,22 @@ function App() {
                       </div>
                     ))}
                   </div>
+                </div>
+              ) : resultMode === 'heatmap' ? (
+                <div className="heatmap-result">
+                  <div className="best-response-summary">
+                    <span>Selected bidder {selectedBidderId}</span>
+                    <strong>{heatmapCurve.length} values</strong>
+                    <small>
+                      Each row holds competitors fixed and searches the selected bidder's utility
+                      over the candidate bid grid.
+                    </small>
+                  </div>
+
+                  <BestResponseHeatmap
+                    curve={heatmapCurve}
+                    candidateBids={result.candidate_bids}
+                  />
                 </div>
               ) : (
                 <div className="single-result">

@@ -295,6 +295,50 @@ def test_best_response_endpoint_rejects_unknown_bidder_id():
     assert response.json()["detail"] == "bidder_id must match one of the bidders"
 
 
+def test_best_response_curve_endpoint_returns_value_sweep():
+    response = client.post(
+        "/best-response/curve",
+        json={
+            "bidder_id": "A",
+            "bidders": [
+                {"id": "A", "value": 10.0, "bid": 10.0},
+                {"id": "B", "value": 8.0, "bid": 8.0},
+                {"id": "C", "value": 5.0, "bid": 5.0},
+            ],
+            "ctrs": [0.6, 0.3],
+            "values": [4.0, 10.0],
+            "candidate_bids": [0.0, 5.0, 6.0, 8.0, 10.0],
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["bidder_id"] == "A"
+    assert body["values"] == [4.0, 10.0]
+    assert body["candidate_bids"] == [0.0, 5.0, 6.0, 8.0, 10.0]
+    assert len(body["curve"]) == 2
+    assert body["curve"][1]["best_bid"] == pytest.approx(5.0)
+
+
+def test_best_response_curve_endpoint_rejects_unknown_bidder_id():
+    response = client.post(
+        "/best-response/curve",
+        json={
+            "bidder_id": "Z",
+            "bidders": [
+                {"id": "A", "value": 10.0, "bid": 10.0},
+            ],
+            "ctrs": [0.6],
+            "values": [10.0],
+            "candidate_bids": [0.0, 10.0],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "bidder_id must match one of the bidders"
+
+
 def test_rl_convergence_returns_best_response_checkpoints_and_history():
     response = client.post(
         "/rl/convergence",

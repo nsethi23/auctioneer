@@ -40,6 +40,10 @@ export async function computeBestResponse(payload) {
   return postJson('/best-response', payload, 'Best response')
 }
 
+export async function computeBestResponseCurve(payload) {
+  return postJson('/best-response/curve', payload, 'Best-response curve')
+}
+
 export async function trackRlConvergence(payload) {
   return postJson('/rl/convergence', payload, 'RL convergence')
 }

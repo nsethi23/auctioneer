@@ -2,7 +2,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from auctioneer.agents.best_response import find_best_response_bid
+from auctioneer.agents.best_response import (
+    find_best_response_bid,
+    generate_best_response_curve,
+)
 from auctioneer.agents.nash import check_gsp_nash_equilibrium
 from auctioneer.agents.q_learning_evaluation import track_q_learning_convergence
 from auctioneer.auctions.gsp import run_gsp_auction
@@ -74,6 +77,14 @@ class BestResponseRequest(BaseModel):
     bidder_id: str
     bidders: list[BidderInput]
     ctrs: list[float]
+    candidate_bids: list[float]
+
+
+class BestResponseCurveRequest(BaseModel):
+    bidder_id: str
+    bidders: list[BidderInput]
+    ctrs: list[float]
+    values: list[float]
     candidate_bids: list[float]
 
 
@@ -188,6 +199,38 @@ def compute_best_response(request: BestResponseRequest):
         ctrs=request.ctrs,
         candidate_bids=request.candidate_bids,
     )
+
+
+@app.post("/best-response/curve")
+def compute_best_response_curve(request: BestResponseCurveRequest):
+    bidders = [bidder_input_to_dict(bidder) for bidder in request.bidders]
+    target_bidder = next(
+        (bidder for bidder in bidders if bidder["id"] == request.bidder_id),
+        None,
+    )
+
+    if target_bidder is None:
+        raise HTTPException(
+            status_code=400,
+            detail="bidder_id must match one of the bidders",
+        )
+
+    other_bidders = [
+        bidder for bidder in bidders if bidder["id"] != request.bidder_id
+    ]
+
+    return {
+        "bidder_id": request.bidder_id,
+        "values": request.values,
+        "candidate_bids": request.candidate_bids,
+        "curve": generate_best_response_curve(
+            bidder_id=target_bidder["id"],
+            values=request.values,
+            other_bidders=other_bidders,
+            ctrs=request.ctrs,
+            candidate_bids=request.candidate_bids,
+        ),
+    }
 
 
 @app.post("/rl/convergence")

@@ -384,6 +384,7 @@ button:disabled {
 .metric-bars,
 .utility-bars,
 .rl-chart,
+.heatmap-panel,
 .allocation-diagram {
   border: 1px solid oklch(86% 0.014 250);
   border-radius: 8px;
@@ -642,6 +643,65 @@ button:disabled {
 .rl-chart {
   display: grid;
   gap: 12px;
+}
+
+.heatmap-result {
+  display: grid;
+  gap: 18px;
+}
+
+.heatmap-panel {
+  display: grid;
+  gap: 12px;
+  overflow-x: auto;
+}
+
+.heatmap-grid {
+  display: grid;
+  min-width: 560px;
+  border: 1px solid oklch(86% 0.014 250);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.heatmap-corner,
+.heatmap-axis,
+.heatmap-cell {
+  display: grid;
+  min-height: 42px;
+  place-items: center;
+  border-right: 1px solid oklch(88% 0.012 250);
+  border-bottom: 1px solid oklch(88% 0.012 250);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.heatmap-corner,
+.heatmap-axis {
+  color: oklch(46% 0.035 250);
+  background: oklch(96% 0.008 250);
+  font-weight: 750;
+}
+
+.value-axis {
+  justify-items: start;
+  padding-left: 12px;
+}
+
+.heatmap-cell {
+  color: oklch(18% 0.02 250);
+  font-weight: 750;
+}
+
+.heatmap-cell.best-cell {
+  outline: 2px solid oklch(35% 0.12 155);
+  outline-offset: -3px;
+}
+
+.heatmap-note {
+  color: oklch(44% 0.035 250);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .chart-legend {
