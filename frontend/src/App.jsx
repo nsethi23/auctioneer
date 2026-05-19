@@ -55,6 +55,14 @@ function formatNumber(value) {
   }).format(value)
 }
 
+function getPercent(value, maxValue) {
+  if (!Number.isFinite(value) || maxValue <= 0) {
+    return 0
+  }
+
+  return Math.max(0, Math.min(100, (value / maxValue) * 100))
+}
+
 function MetricRow({ label, gsp, vcg, difference }) {
   return (
     <div className="metric-row">
@@ -65,6 +73,42 @@ function MetricRow({ label, gsp, vcg, difference }) {
         {difference >= 0 ? '+' : ''}
         {formatNumber(difference)}
       </strong>
+    </div>
+  )
+}
+
+function MetricBars({ rows }) {
+  const maxValue = Math.max(...rows.flatMap((row) => [row.gsp, row.vcg]), 0)
+
+  return (
+    <div className="metric-bars">
+      {rows.map((row) => (
+        <div className="metric-bar-row" key={row.label}>
+          <span>{row.label}</span>
+          <div className="bar-pair">
+            <div className="bar-line">
+              <span>GSP</span>
+              <div className="bar-track">
+                <div
+                  className="bar-fill gsp-fill"
+                  style={{ width: `${getPercent(row.gsp, maxValue)}%` }}
+                />
+              </div>
+              <strong>{formatNumber(row.gsp)}</strong>
+            </div>
+            <div className="bar-line">
+              <span>VCG</span>
+              <div className="bar-track">
+                <div
+                  className="bar-fill vcg-fill"
+                  style={{ width: `${getPercent(row.vcg, maxValue)}%` }}
+                />
+              </div>
+              <strong>{formatNumber(row.vcg)}</strong>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -127,6 +171,117 @@ function AllocationTable({ allocations }) {
           <span>{formatNumber(allocation.utility)}</span>
         </div>
       ))}
+    </div>
+  )
+}
+
+function AllocationDiagram({ title, allocations }) {
+  const maxCtr = Math.max(...allocations.map((allocation) => allocation.ctr), 0)
+
+  return (
+    <div className="allocation-diagram">
+      <h3>{title}</h3>
+      <div className="slot-map">
+        {allocations.map((allocation) => (
+          <div className="slot-map-row" key={`${title}-${allocation.bidder_id}-${allocation.slot}`}>
+            <div className="slot-label">
+              <span>Slot {allocation.slot + 1}</span>
+              <strong>{allocation.bidder_id}</strong>
+            </div>
+            <div className="slot-visual">
+              <div
+                className="slot-visual-fill"
+                style={{ width: `${getPercent(allocation.ctr, maxCtr)}%` }}
+              />
+            </div>
+            <div className="slot-metrics">
+              <span>CTR {formatNumber(allocation.ctr)}</span>
+              <span>Pay {formatNumber(allocation.payment)}</span>
+              <span>Util {formatNumber(allocation.utility)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CandidateUtilityBars({ rows, bestBid }) {
+  const maxUtility = Math.max(...rows.map((row) => row.utility), 0)
+
+  return (
+    <div className="utility-bars">
+      {rows.map((candidate) => (
+        <div
+          className={candidate.bid === bestBid ? 'utility-bar-row best-candidate' : 'utility-bar-row'}
+          key={candidate.bid}
+        >
+          <span>Bid {formatNumber(candidate.bid)}</span>
+          <div className="bar-track">
+            <div
+              className="bar-fill utility-fill"
+              style={{ width: `${getPercent(candidate.utility, maxUtility)}%` }}
+            />
+          </div>
+          <strong>{formatNumber(candidate.utility)}</strong>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function RlConvergenceCurve({ checkpoints }) {
+  if (checkpoints.length === 0) {
+    return null
+  }
+
+  const width = 640
+  const height = 220
+  const padding = 28
+  const values = checkpoints.flatMap((checkpoint) => [
+    checkpoint.learned_q_value,
+    checkpoint.best_response_utility,
+  ])
+  const maxValue = Math.max(...values, 1)
+  const minValue = Math.min(...values, 0)
+  const valueRange = maxValue - minValue || 1
+  const maxEpisode = Math.max(...checkpoints.map((checkpoint) => checkpoint.episode), 1)
+
+  function pointFor(checkpoint, value) {
+    const x = padding + (checkpoint.episode / maxEpisode) * (width - padding * 2)
+    const y = height - padding - ((value - minValue) / valueRange) * (height - padding * 2)
+    return `${x},${y}`
+  }
+
+  const learnedPoints = checkpoints
+    .map((checkpoint) => pointFor(checkpoint, checkpoint.learned_q_value))
+    .join(' ')
+
+  const benchmarkPoints = checkpoints
+    .map((checkpoint) => pointFor(checkpoint, checkpoint.best_response_utility))
+    .join(' ')
+
+  return (
+    <div className="rl-chart">
+      <div className="chart-legend">
+        <span className="legend-item learned">Learned Q-value</span>
+        <span className="legend-item benchmark">Best-response utility</span>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="RL convergence curve">
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
+        <line x1={padding} y1={padding} x2={padding} y2={height - padding} />
+        <polyline className="benchmark-line" points={benchmarkPoints} />
+        <polyline className="learned-line" points={learnedPoints} />
+        {checkpoints.map((checkpoint) => (
+          <circle
+            className="learned-point"
+            key={checkpoint.episode}
+            cx={pointFor(checkpoint, checkpoint.learned_q_value).split(',')[0]}
+            cy={pointFor(checkpoint, checkpoint.learned_q_value).split(',')[1]}
+            r="3"
+          />
+        ))}
+      </svg>
     </div>
   )
 }
@@ -655,6 +810,13 @@ function App() {
                     ))}
                   </div>
 
+                  <MetricBars rows={rows} />
+
+                  <div className="allocation-visuals">
+                    <AllocationDiagram title="GSP slot map" allocations={result.gsp.allocations} />
+                    <AllocationDiagram title="VCG slot map" allocations={result.vcg.allocations} />
+                  </div>
+
                   <div className="allocations">
                     <div>
                       <h3>GSP allocation</h3>
@@ -757,6 +919,8 @@ function App() {
                       </div>
                     ))}
                   </div>
+
+                  <CandidateUtilityBars rows={bestResponseRows} bestBid={result.bid} />
                 </div>
               ) : resultMode === 'rl' ? (
                 <div className="rl-result">
@@ -768,6 +932,8 @@ function App() {
                       selected bidder {selectedBidderId}.
                     </small>
                   </div>
+
+                  <RlConvergenceCurve checkpoints={checkpointRows} />
 
                   <div className="checkpoint-table">
                     <div className="checkpoint-row table-head">
@@ -803,7 +969,10 @@ function App() {
                   </div>
 
                   <div>
-                    <h3>{resultMode.toUpperCase()} allocation</h3>
+                    <AllocationDiagram
+                      title={`${resultMode.toUpperCase()} slot map`}
+                      allocations={result.allocations}
+                    />
                     <AllocationTable allocations={result.allocations} />
                   </div>
                 </div>
