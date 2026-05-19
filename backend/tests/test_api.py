@@ -255,6 +255,46 @@ def test_nash_check_rejects_missing_candidate_bids():
     assert response.status_code == 422
 
 
+def test_best_response_endpoint_returns_best_bid_and_candidate_results():
+    response = client.post(
+        "/best-response",
+        json={
+            "bidder_id": "A",
+            "bidders": [
+                {"id": "A", "value": 10.0, "bid": 10.0},
+                {"id": "B", "value": 8.0, "bid": 8.0},
+                {"id": "C", "value": 5.0, "bid": 5.0},
+            ],
+            "ctrs": [0.6, 0.3],
+            "candidate_bids": [0.0, 5.0, 6.0, 8.0, 10.0],
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["bid"] == pytest.approx(5.0)
+    assert body["utility"] == pytest.approx(1.5)
+    assert len(body["results"]) == 5
+
+
+def test_best_response_endpoint_rejects_unknown_bidder_id():
+    response = client.post(
+        "/best-response",
+        json={
+            "bidder_id": "Z",
+            "bidders": [
+                {"id": "A", "value": 10.0, "bid": 10.0},
+            ],
+            "ctrs": [0.6],
+            "candidate_bids": [0.0, 10.0],
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "bidder_id must match one of the bidders"
+
+
 def test_rl_convergence_returns_best_response_checkpoints_and_history():
     response = client.post(
         "/rl/convergence",

@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from auctioneer.agents.best_response import find_best_response_bid
 from auctioneer.agents.nash import check_gsp_nash_equilibrium
 from auctioneer.agents.q_learning_evaluation import track_q_learning_convergence
 from auctioneer.auctions.gsp import run_gsp_auction
@@ -67,6 +68,13 @@ class NashCheckRequest(BaseModel):
     ctrs: list[float]
     candidate_bids: list[float]
     tolerance: float = 1e-9
+
+
+class BestResponseRequest(BaseModel):
+    bidder_id: str
+    bidders: list[BidderInput]
+    ctrs: list[float]
+    candidate_bids: list[float]
 
 
 class RLConvergenceRequest(BaseModel):
@@ -152,6 +160,33 @@ def check_nash(request: NashCheckRequest):
         ctrs=request.ctrs,
         candidate_bids=request.candidate_bids,
         tolerance=request.tolerance,
+    )
+
+
+@app.post("/best-response")
+def compute_best_response(request: BestResponseRequest):
+    bidders = [bidder_input_to_dict(bidder) for bidder in request.bidders]
+    target_bidder = next(
+        (bidder for bidder in bidders if bidder["id"] == request.bidder_id),
+        None,
+    )
+
+    if target_bidder is None:
+        raise HTTPException(
+            status_code=400,
+            detail="bidder_id must match one of the bidders",
+        )
+
+    other_bidders = [
+        bidder for bidder in bidders if bidder["id"] != request.bidder_id
+    ]
+
+    return find_best_response_bid(
+        bidder_id=target_bidder["id"],
+        value=target_bidder["value"],
+        other_bidders=other_bidders,
+        ctrs=request.ctrs,
+        candidate_bids=request.candidate_bids,
     )
 
 

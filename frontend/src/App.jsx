@@ -3,6 +3,7 @@ import {
   checkHealth,
   checkNashEquilibrium,
   compareAuctions,
+  computeBestResponse,
   computePriceOfAnarchy,
   runGspAuction,
   runVcgAuction,
@@ -83,6 +84,21 @@ function MarketInput({ label, value, step = '1', onChange }) {
   )
 }
 
+function MarketSelect({ label, value, options, onChange }) {
+  return (
+    <label className="market-input">
+      <span>{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 function AllocationTable({ allocations }) {
   return (
     <div className="allocation-table">
@@ -116,6 +132,7 @@ function parseCandidateBids(candidateBidsText) {
 function App() {
   const [market, setMarket] = useState(sampleMarket)
   const [candidateBidsText, setCandidateBidsText] = useState(defaultCandidateBids)
+  const [selectedBidderId, setSelectedBidderId] = useState(sampleMarket.bidders[0].id)
   const [result, setResult] = useState(null)
   const [resultMode, setResultMode] = useState('compare')
   const [apiStatus, setApiStatus] = useState('checking')
@@ -166,6 +183,7 @@ function App() {
   function resetMarket() {
     setMarket(sampleMarket)
     setCandidateBidsText(defaultCandidateBids)
+    setSelectedBidderId(sampleMarket.bidders[0].id)
     setResult(null)
     setError('')
   }
@@ -205,6 +223,14 @@ function App() {
     }))
   }, [result, resultMode])
 
+  const bestResponseRows = useMemo(() => {
+    if (!result || resultMode !== 'best-response') {
+      return []
+    }
+
+    return result.results
+  }, [result, resultMode])
+
   async function runExperiment(mode) {
     setIsLoading(true)
     setError('')
@@ -220,6 +246,24 @@ function App() {
 
         setResult(
           await checkNashEquilibrium({
+            bidders: market.bidders,
+            ctrs: market.ctrs,
+            candidate_bids: candidateBids,
+          }),
+        )
+        return
+      }
+
+      if (mode === 'best-response') {
+        const candidateBids = parseCandidateBids(candidateBidsText)
+
+        if (candidateBids.length === 0) {
+          throw new Error('Enter at least one candidate bid')
+        }
+
+        setResult(
+          await computeBestResponse({
+            bidder_id: selectedBidderId,
             bidders: market.bidders,
             ctrs: market.ctrs,
             candidate_bids: candidateBids,
@@ -332,29 +376,48 @@ function App() {
               >
                 Nash check
               </button>
+              <button
+                type="button"
+                className={resultMode === 'best-response' ? 'mode-button active' : 'mode-button'}
+                onClick={() => runExperiment('best-response')}
+                disabled={isLoading}
+              >
+                Best response
+              </button>
             </div>
             <p className="mode-note">
-              GSP uses reserve and quality scores. VCG uses reserve. Nash checks whether bidders
-              can improve by changing only their own bid.
+              Best response holds other bids fixed and searches for the selected bidder's
+              utility-maximizing bid.
             </p>
           </div>
 
           <div className="input-section">
             <div className="section-label">
-              <span>Candidate bids</span>
-              <small>Comma-separated grid for Nash and best response</small>
+              <span>Strategy search</span>
+              <small>Candidate bid grid and target bidder</small>
             </div>
-            <label className="market-input">
-              <span>Bid grid</span>
-              <input
-                type="text"
-                value={candidateBidsText}
-                onChange={(event) => {
-                  setCandidateBidsText(event.target.value)
+            <div className="strategy-search">
+              <label className="market-input">
+                <span>Bid grid</span>
+                <input
+                  type="text"
+                  value={candidateBidsText}
+                  onChange={(event) => {
+                    setCandidateBidsText(event.target.value)
+                    setResult(null)
+                  }}
+                />
+              </label>
+              <MarketSelect
+                label="Target bidder"
+                value={selectedBidderId}
+                options={market.bidders.map((bidder) => bidder.id)}
+                onChange={(value) => {
+                  setSelectedBidderId(value)
                   setResult(null)
                 }}
               />
-            </label>
+            </div>
           </div>
 
           <div className="input-section">
@@ -448,6 +511,8 @@ function App() {
                     ? 'Efficiency'
                     : resultMode === 'nash'
                       ? 'Nash'
+                      : resultMode === 'best-response'
+                        ? 'Best response'
                       : resultMode.toUpperCase()}
               </p>
               <h2>
@@ -457,6 +522,8 @@ function App() {
                     ? 'Price of anarchy'
                     : resultMode === 'nash'
                       ? 'Equilibrium check'
+                      : resultMode === 'best-response'
+                        ? 'Bid search'
                       : 'Auction result'}
               </h2>
             </div>
@@ -559,6 +626,36 @@ function App() {
                       <span>The current bids pass this candidate-grid Nash check.</span>
                     </div>
                   )}
+                </div>
+              ) : resultMode === 'best-response' ? (
+                <div className="best-response-result">
+                  <div className="best-response-summary">
+                    <span>Selected bidder {selectedBidderId}</span>
+                    <strong>Bid {formatNumber(result.bid)}</strong>
+                    <small>
+                      Best utility is {formatNumber(result.utility)} over the candidate bid grid.
+                    </small>
+                  </div>
+
+                  <div className="candidate-table">
+                    <div className="candidate-row table-head">
+                      <span>Candidate bid</span>
+                      <span>Utility</span>
+                    </div>
+                    {bestResponseRows.map((candidate) => (
+                      <div
+                        className={
+                          candidate.bid === result.bid
+                            ? 'candidate-row best-candidate'
+                            : 'candidate-row'
+                        }
+                        key={candidate.bid}
+                      >
+                        <span>{formatNumber(candidate.bid)}</span>
+                        <span>{formatNumber(candidate.utility)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="single-result">

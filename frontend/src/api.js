@@ -36,6 +36,10 @@ export async function checkNashEquilibrium(payload) {
   return postJson('/nash/check', payload, 'Nash equilibrium check')
 }
 
+export async function computeBestResponse(payload) {
+  return postJson('/best-response', payload, 'Best response')
+}
+
 export async function checkHealth() {
   const response = await fetch(`${API_BASE_URL}/health`)
 

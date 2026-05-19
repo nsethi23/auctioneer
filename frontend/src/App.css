@@ -145,7 +145,7 @@ button {
 
 .mechanism-controls {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -180,7 +180,8 @@ button:hover {
 
 button:focus-visible,
 .topbar a:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 2px solid oklch(62% 0.16 245);
   outline-offset: 3px;
 }
@@ -272,6 +273,23 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+.market-input select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid oklch(82% 0.016 250);
+  border-radius: 7px;
+  padding: 0 10px;
+  color: oklch(21% 0.02 250);
+  background: oklch(99% 0.004 250);
+  font-size: 14px;
+}
+
+.strategy-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px;
+  gap: 10px;
+}
+
 .bidder-editor {
   display: grid;
   grid-template-columns: 34px repeat(3, minmax(0, 1fr));
@@ -346,6 +364,7 @@ button:disabled {
 }
 
 .metric-table,
+.candidate-table,
 .deviation-table,
 .single-metric-table,
 .allocation-table {
@@ -356,6 +375,7 @@ button:disabled {
 }
 
 .metric-row,
+.candidate-row,
 .deviation-row,
 .single-metric-row,
 .table-head,
@@ -383,6 +403,16 @@ button:disabled {
   padding: 13px 16px;
 }
 
+.candidate-row {
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 13px 16px;
+}
+
+.candidate-row.best-candidate {
+  background: oklch(95% 0.035 160);
+}
+
 .table-head {
   color: oklch(48% 0.035 250);
   background: oklch(96% 0.008 250);
@@ -392,6 +422,7 @@ button:disabled {
 }
 
 .metric-row:last-child,
+.candidate-row:last-child,
 .deviation-row:last-child,
 .single-metric-row:last-child,
 .table-row:last-child {
@@ -399,6 +430,7 @@ button:disabled {
 }
 
 .metric-row strong,
+.candidate-row span,
 .deviation-row span,
 .single-metric-row strong,
 .table-row span {
@@ -430,7 +462,8 @@ button:disabled {
   gap: 18px;
 }
 
-.nash-result {
+.nash-result,
+.best-response-result {
   display: grid;
   gap: 18px;
 }
@@ -444,7 +477,8 @@ button:disabled {
   background: oklch(96% 0.014 245);
 }
 
-.nash-summary {
+.nash-summary,
+.best-response-summary {
   display: grid;
   gap: 6px;
   border: 1px solid oklch(84% 0.03 245);
@@ -464,6 +498,7 @@ button:disabled {
 }
 
 .nash-summary span,
+.best-response-summary span,
 .efficiency-summary span {
   color: oklch(44% 0.04 250);
   font-size: 13px;
@@ -471,6 +506,7 @@ button:disabled {
 }
 
 .nash-summary strong,
+.best-response-summary strong,
 .efficiency-summary strong {
   color: oklch(24% 0.08 245);
   font-size: 34px;
@@ -479,6 +515,7 @@ button:disabled {
 }
 
 .nash-summary small,
+.best-response-summary small,
 .efficiency-summary small {
   max-width: 62ch;
   color: oklch(42% 0.035 250);
@@ -565,6 +602,7 @@ button:disabled {
 @media (max-width: 520px) {
   .slot-strip,
   .mechanism-controls,
+  .strategy-search,
   .bidder-editor {
     grid-template-columns: 1fr;
   }
