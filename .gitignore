@@ -1,13 +1,40 @@
+# Python environments
 .venv/
+venv/
+env/
+
+# Python caches and build artifacts
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .pytest_cache/
 .ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
 *.egg-info/
-.vscode/
-
-node_modules/
-dist/
 build/
+dist/
+
+# Node / Vite
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment files
 .env
+.env.*
+!.env.example
+
+# Editor and OS files
+.vscode/
+.idea/
 .DS_Store
+*.swp
+*.swo
