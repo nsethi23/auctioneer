@@ -1,121 +1,196 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import { useMemo, useState } from 'react'
+import { compareAuctions } from './api'
 import './App.css'
 
+const sampleMarket = {
+  bidders: [
+    { id: 'A', value: 10, bid: 10 },
+    { id: 'B', value: 8, bid: 8 },
+    { id: 'C', value: 5, bid: 5 },
+  ],
+  ctrs: [0.6, 0.3],
+}
+
+const metricLabels = {
+  revenue: 'Revenue',
+  welfare: 'Welfare',
+  bidder_surplus: 'Bidder surplus',
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+  }).format(value)
+}
+
+function MetricRow({ label, gsp, vcg, difference }) {
+  return (
+    <div className="metric-row">
+      <span>{label}</span>
+      <strong>{formatNumber(gsp)}</strong>
+      <strong>{formatNumber(vcg)}</strong>
+      <strong className={difference >= 0 ? 'positive' : 'negative'}>
+        {difference >= 0 ? '+' : ''}
+        {formatNumber(difference)}
+      </strong>
+    </div>
+  )
+}
+
+function AllocationTable({ allocations }) {
+  return (
+    <div className="allocation-table">
+      <div className="table-head">
+        <span>Bidder</span>
+        <span>Slot</span>
+        <span>CTR</span>
+        <span>Payment</span>
+        <span>Utility</span>
+      </div>
+      {allocations.map((allocation) => (
+        <div className="table-row" key={`${allocation.bidder_id}-${allocation.slot}`}>
+          <span>{allocation.bidder_id}</span>
+          <span>{allocation.slot + 1}</span>
+          <span>{formatNumber(allocation.ctr)}</span>
+          <span>{formatNumber(allocation.payment)}</span>
+          <span>{formatNumber(allocation.utility)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [result, setResult] = useState(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const rows = useMemo(() => {
+    if (!result) {
+      return []
+    }
+
+    return Object.entries(metricLabels).map(([metric, label]) => ({
+      label,
+      gsp: result.gsp[metric],
+      vcg: result.vcg[metric],
+      difference: result.difference[metric],
+    }))
+  }, [result])
+
+  async function runComparison() {
+    setIsLoading(true)
+    setError('')
+
+    try {
+      const comparison = await compareAuctions(sampleMarket)
+      setResult(comparison)
+    } catch (caughtError) {
+      setError(caughtError.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <main className="app-shell">
+      <section className="topbar">
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
+          <p className="eyebrow">Auctioneer</p>
+          <h1>Ad auction simulation lab</h1>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
+        <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
+          API docs
+        </a>
       </section>
 
-      <div className="ticks"></div>
+      <section className="workspace">
+        <aside className="market-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Sample market</p>
+              <h2>3 bidders, 2 slots</h2>
+            </div>
+            <button type="button" onClick={runComparison} disabled={isLoading}>
+              {isLoading ? 'Running...' : 'Run comparison'}
+            </button>
+          </div>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
+          <div className="slot-strip">
+            {sampleMarket.ctrs.map((ctr, index) => (
+              <div className="slot" key={ctr}>
+                <span>Slot {index + 1}</span>
+                <strong>{formatNumber(ctr)}</strong>
+                <small>CTR</small>
+              </div>
+            ))}
+          </div>
+
+          <div className="bidder-list">
+            {sampleMarket.bidders.map((bidder) => (
+              <div className="bidder" key={bidder.id}>
+                <strong>{bidder.id}</strong>
+                <span>value {formatNumber(bidder.value)}</span>
+                <span>bid {formatNumber(bidder.bid)}</span>
+              </div>
+            ))}
+          </div>
+
+          {error && <p className="error-message">{error}</p>}
+        </aside>
+
+        <section className="results-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">GSP vs VCG</p>
+              <h2>Mechanism comparison</h2>
+            </div>
+            <span className={result ? 'status ready' : 'status'}>
+              {result ? 'Result ready' : 'Waiting'}
+            </span>
+          </div>
+
+          {result ? (
+            <>
+              <div className="metric-table">
+                <div className="metric-row table-head">
+                  <span>Metric</span>
+                  <span>GSP</span>
+                  <span>VCG</span>
+                  <span>Diff</span>
+                </div>
+                {rows.map((row) => (
+                  <MetricRow
+                    key={row.label}
+                    label={row.label}
+                    gsp={row.gsp}
+                    vcg={row.vcg}
+                    difference={row.difference}
+                  />
+                ))}
+              </div>
+
+              <div className="allocations">
+                <div>
+                  <h3>GSP allocation</h3>
+                  <AllocationTable allocations={result.gsp.allocations} />
+                </div>
+                <div>
+                  <h3>VCG allocation</h3>
+                  <AllocationTable allocations={result.vcg.allocations} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="empty-state">
+              <strong>No comparison run yet</strong>
+              <span>Start the backend, then run the sample market.</span>
+            </div>
+          )}
+        </section>
       </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    </main>
   )
 }
 

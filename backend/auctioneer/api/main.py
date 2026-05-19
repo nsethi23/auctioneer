@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from auctioneer.agents.nash import check_gsp_nash_equilibrium
@@ -12,6 +13,17 @@ from auctioneer.simulation.statistical_runner import (
 )
 
 app = FastAPI(title="Auctioneer API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
