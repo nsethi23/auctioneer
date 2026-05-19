@@ -21,6 +21,34 @@
   text-decoration: none;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.api-status {
+  border: 1px solid oklch(84% 0.016 250);
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: oklch(48% 0.035 250);
+  background: oklch(97% 0.008 250);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.api-status.online {
+  color: oklch(34% 0.11 160);
+  border-color: oklch(78% 0.08 160);
+  background: oklch(95% 0.035 160);
+}
+
+.api-status.offline {
+  color: oklch(42% 0.13 25);
+  border-color: oklch(76% 0.08 25);
+  background: oklch(96% 0.025 25);
+}
+
 .eyebrow {
   margin: 0 0 6px;
   color: oklch(46% 0.035 250);
@@ -98,12 +126,54 @@ button {
     opacity 180ms ease-out;
 }
 
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.secondary-button {
+  color: oklch(32% 0.08 245);
+  border-color: oklch(78% 0.045 245);
+  background: oklch(96% 0.014 245);
+}
+
+.secondary-button:hover {
+  background: oklch(93% 0.022 245);
+}
+
+.mechanism-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mode-button {
+  min-height: 36px;
+  color: oklch(34% 0.075 245);
+  border-color: oklch(80% 0.035 245);
+  background: oklch(98% 0.006 250);
+  font-size: 13px;
+}
+
+.mode-button:hover {
+  background: oklch(94% 0.018 245);
+}
+
+.mode-button.active {
+  color: oklch(99% 0.004 250);
+  border-color: oklch(42% 0.13 245);
+  background: oklch(42% 0.13 245);
+}
+
 button:hover {
   background: oklch(36% 0.13 245);
 }
 
 button:focus-visible,
-.topbar a:focus-visible {
+.topbar a:focus-visible,
+input:focus-visible {
   outline: 2px solid oklch(62% 0.16 245);
   outline-offset: 3px;
 }
@@ -117,7 +187,6 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
-  margin-bottom: 24px;
 }
 
 .slot,
@@ -149,9 +218,82 @@ button:disabled {
   line-height: 1;
 }
 
+.input-section {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.section-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-label span {
+  color: oklch(24% 0.025 250);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.section-label small {
+  color: oklch(50% 0.03 250);
+  font-size: 12px;
+}
+
+.market-input {
+  display: grid;
+  gap: 6px;
+}
+
+.market-input span {
+  color: oklch(48% 0.035 250);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.market-input input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid oklch(82% 0.016 250);
+  border-radius: 7px;
+  padding: 0 10px;
+  color: oklch(21% 0.02 250);
+  background: oklch(99% 0.004 250);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bidder-editor {
+  display: grid;
+  grid-template-columns: 34px 1fr 1fr;
+  align-items: end;
+  gap: 10px;
+  border: 1px solid oklch(86% 0.014 250);
+  border-radius: 8px;
+  padding: 12px;
+  background: oklch(99% 0.004 250);
+}
+
+.bidder-editor > strong {
+  display: inline-grid;
+  width: 28px;
+  height: 36px;
+  place-items: center;
+  color: oklch(32% 0.13 245);
+  font-size: 13px;
+}
+
 .bidder-list {
   display: grid;
   gap: 8px;
+}
+
+.market-summary {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
 }
 
 .bidder {
@@ -197,6 +339,7 @@ button:disabled {
 }
 
 .metric-table,
+.single-metric-table,
 .allocation-table {
   border: 1px solid oklch(86% 0.014 250);
   border-radius: 8px;
@@ -205,6 +348,7 @@ button:disabled {
 }
 
 .metric-row,
+.single-metric-row,
 .table-head,
 .table-row {
   display: grid;
@@ -218,6 +362,12 @@ button:disabled {
   padding: 13px 16px;
 }
 
+.single-metric-row {
+  grid-template-columns: minmax(150px, 1fr) minmax(90px, 0.45fr);
+  gap: 16px;
+  padding: 13px 16px;
+}
+
 .table-head {
   color: oklch(48% 0.035 250);
   background: oklch(96% 0.008 250);
@@ -227,11 +377,13 @@ button:disabled {
 }
 
 .metric-row:last-child,
+.single-metric-row:last-child,
 .table-row:last-child {
   border-bottom: 0;
 }
 
 .metric-row strong,
+.single-metric-row strong,
 .table-row span {
   font-variant-numeric: tabular-nums;
 }
@@ -249,6 +401,15 @@ button:disabled {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
   margin-top: 22px;
+}
+
+.single-result {
+  display: grid;
+  gap: 22px;
+}
+
+.single-result h3 {
+  margin-bottom: 10px;
 }
 
 .allocations h3 {
@@ -281,6 +442,12 @@ button:disabled {
     padding: 24px 20px;
   }
 
+  .topbar-actions {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   .workspace,
   .allocations {
     grid-template-columns: 1fr;
@@ -301,5 +468,31 @@ button:disabled {
     gap: 10px;
     padding: 12px;
     font-size: 13px;
+  }
+
+  .panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .button-group {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .slot-strip,
+  .mechanism-controls,
+  .bidder-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .bidder-editor > strong {
+    height: auto;
+    justify-self: start;
+  }
+
+  .bidder {
+    grid-template-columns: 32px 1fr;
   }
 }

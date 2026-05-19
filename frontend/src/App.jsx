@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { compareAuctions } from './api'
+import { useEffect, useMemo, useState } from 'react'
+import { checkHealth, compareAuctions, runGspAuction, runVcgAuction } from './api'
 import './App.css'
 
 const sampleMarket = {
@@ -38,6 +38,30 @@ function MetricRow({ label, gsp, vcg, difference }) {
   )
 }
 
+function SingleMetricRow({ label, value }) {
+  return (
+    <div className="single-metric-row">
+      <span>{label}</span>
+      <strong>{formatNumber(value)}</strong>
+    </div>
+  )
+}
+
+function MarketInput({ label, value, step = '1', onChange }) {
+  return (
+    <label className="market-input">
+      <span>{label}</span>
+      <input
+        type="number"
+        min="0"
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+    </label>
+  )
+}
+
 function AllocationTable({ allocations }) {
   return (
     <div className="allocation-table">
@@ -62,12 +86,62 @@ function AllocationTable({ allocations }) {
 }
 
 function App() {
+  const [market, setMarket] = useState(sampleMarket)
   const [result, setResult] = useState(null)
+  const [resultMode, setResultMode] = useState('compare')
+  const [apiStatus, setApiStatus] = useState('checking')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadApiStatus() {
+      try {
+        await checkHealth()
+        if (isMounted) {
+          setApiStatus('online')
+        }
+      } catch {
+        if (isMounted) {
+          setApiStatus('offline')
+        }
+      }
+    }
+
+    loadApiStatus()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  function updateBidder(index, field, value) {
+    setMarket((currentMarket) => ({
+      ...currentMarket,
+      bidders: currentMarket.bidders.map((bidder, bidderIndex) =>
+        bidderIndex === index ? { ...bidder, [field]: value } : bidder,
+      ),
+    }))
+    setResult(null)
+  }
+
+  function updateCtr(index, value) {
+    setMarket((currentMarket) => ({
+      ...currentMarket,
+      ctrs: currentMarket.ctrs.map((ctr, ctrIndex) => (ctrIndex === index ? value : ctr)),
+    }))
+    setResult(null)
+  }
+
+  function resetMarket() {
+    setMarket(sampleMarket)
+    setResult(null)
+    setError('')
+  }
+
   const rows = useMemo(() => {
-    if (!result) {
+    if (!result || resultMode !== 'compare') {
       return []
     }
 
@@ -77,15 +151,32 @@ function App() {
       vcg: result.vcg[metric],
       difference: result.difference[metric],
     }))
-  }, [result])
+  }, [result, resultMode])
 
-  async function runComparison() {
+  const singleRows = useMemo(() => {
+    if (!result || resultMode === 'compare') {
+      return []
+    }
+
+    return Object.entries(metricLabels).map(([metric, label]) => ({
+      label,
+      value: result[metric],
+    }))
+  }, [result, resultMode])
+
+  async function runExperiment(mode) {
     setIsLoading(true)
     setError('')
+    setResultMode(mode)
 
     try {
-      const comparison = await compareAuctions(sampleMarket)
-      setResult(comparison)
+      if (mode === 'gsp') {
+        setResult(await runGspAuction(market))
+      } else if (mode === 'vcg') {
+        setResult(await runVcgAuction(market))
+      } else {
+        setResult(await compareAuctions(market))
+      }
     } catch (caughtError) {
       setError(caughtError.message)
     } finally {
@@ -100,35 +191,108 @@ function App() {
           <p className="eyebrow">Auctioneer</p>
           <h1>Ad auction simulation lab</h1>
         </div>
-        <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
-          API docs
-        </a>
+        <div className="topbar-actions">
+          <span className={`api-status ${apiStatus}`}>API {apiStatus}</span>
+          <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
+            API docs
+          </a>
+        </div>
       </section>
 
       <section className="workspace">
         <aside className="market-panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Sample market</p>
-              <h2>3 bidders, 2 slots</h2>
+              <p className="eyebrow">Market inputs</p>
+              <h2>{market.bidders.length} bidders, {market.ctrs.length} slots</h2>
             </div>
-            <button type="button" onClick={runComparison} disabled={isLoading}>
-              {isLoading ? 'Running...' : 'Run comparison'}
-            </button>
+            <div className="button-group">
+              <button type="button" className="secondary-button" onClick={resetMarket}>
+                Reset
+              </button>
+              <button type="button" onClick={() => runExperiment('compare')} disabled={isLoading}>
+                {isLoading ? 'Running...' : 'Run comparison'}
+              </button>
+            </div>
           </div>
 
-          <div className="slot-strip">
-            {sampleMarket.ctrs.map((ctr, index) => (
-              <div className="slot" key={ctr}>
-                <span>Slot {index + 1}</span>
-                <strong>{formatNumber(ctr)}</strong>
-                <small>CTR</small>
-              </div>
-            ))}
+          <div className="input-section">
+            <div className="section-label">
+              <span>Mechanism</span>
+              <small>Choose what to run</small>
+            </div>
+            <div className="mechanism-controls">
+              <button
+                type="button"
+                className={resultMode === 'compare' ? 'mode-button active' : 'mode-button'}
+                onClick={() => runExperiment('compare')}
+                disabled={isLoading}
+              >
+                GSP vs VCG
+              </button>
+              <button
+                type="button"
+                className={resultMode === 'gsp' ? 'mode-button active' : 'mode-button'}
+                onClick={() => runExperiment('gsp')}
+                disabled={isLoading}
+              >
+                GSP only
+              </button>
+              <button
+                type="button"
+                className={resultMode === 'vcg' ? 'mode-button active' : 'mode-button'}
+                onClick={() => runExperiment('vcg')}
+                disabled={isLoading}
+              >
+                VCG only
+              </button>
+            </div>
           </div>
 
-          <div className="bidder-list">
-            {sampleMarket.bidders.map((bidder) => (
+          <div className="input-section">
+            <div className="section-label">
+              <span>Slots</span>
+              <small>Click-through rates</small>
+            </div>
+            <div className="slot-strip">
+              {market.ctrs.map((ctr, index) => (
+                <MarketInput
+                  key={`slot-${index}`}
+                  label={`Slot ${index + 1}`}
+                  value={ctr}
+                  step="0.05"
+                  onChange={(value) => updateCtr(index, value)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="input-section">
+            <div className="section-label">
+              <span>Bidders</span>
+              <small>Private value and submitted bid</small>
+            </div>
+            <div className="bidder-list">
+              {market.bidders.map((bidder, index) => (
+                <div className="bidder-editor" key={bidder.id}>
+                  <strong>{bidder.id}</strong>
+                  <MarketInput
+                    label="Value"
+                    value={bidder.value}
+                    onChange={(value) => updateBidder(index, 'value', value)}
+                  />
+                  <MarketInput
+                    label="Bid"
+                    value={bidder.bid}
+                    onChange={(value) => updateBidder(index, 'bid', value)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="market-summary">
+            {market.bidders.map((bidder) => (
               <div className="bidder" key={bidder.id}>
                 <strong>{bidder.id}</strong>
                 <span>value {formatNumber(bidder.value)}</span>
@@ -143,8 +307,10 @@ function App() {
         <section className="results-panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">GSP vs VCG</p>
-              <h2>Mechanism comparison</h2>
+              <p className="eyebrow">
+                {resultMode === 'compare' ? 'GSP vs VCG' : resultMode.toUpperCase()}
+              </p>
+              <h2>{resultMode === 'compare' ? 'Mechanism comparison' : 'Auction result'}</h2>
             </div>
             <span className={result ? 'status ready' : 'status'}>
               {result ? 'Result ready' : 'Waiting'}
@@ -153,34 +319,55 @@ function App() {
 
           {result ? (
             <>
-              <div className="metric-table">
-                <div className="metric-row table-head">
-                  <span>Metric</span>
-                  <span>GSP</span>
-                  <span>VCG</span>
-                  <span>Diff</span>
-                </div>
-                {rows.map((row) => (
-                  <MetricRow
-                    key={row.label}
-                    label={row.label}
-                    gsp={row.gsp}
-                    vcg={row.vcg}
-                    difference={row.difference}
-                  />
-                ))}
-              </div>
+              {resultMode === 'compare' ? (
+                <>
+                  <div className="metric-table">
+                    <div className="metric-row table-head">
+                      <span>Metric</span>
+                      <span>GSP</span>
+                      <span>VCG</span>
+                      <span>Diff</span>
+                    </div>
+                    {rows.map((row) => (
+                      <MetricRow
+                        key={row.label}
+                        label={row.label}
+                        gsp={row.gsp}
+                        vcg={row.vcg}
+                        difference={row.difference}
+                      />
+                    ))}
+                  </div>
 
-              <div className="allocations">
-                <div>
-                  <h3>GSP allocation</h3>
-                  <AllocationTable allocations={result.gsp.allocations} />
+                  <div className="allocations">
+                    <div>
+                      <h3>GSP allocation</h3>
+                      <AllocationTable allocations={result.gsp.allocations} />
+                    </div>
+                    <div>
+                      <h3>VCG allocation</h3>
+                      <AllocationTable allocations={result.vcg.allocations} />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="single-result">
+                  <div className="single-metric-table">
+                    <div className="single-metric-row table-head">
+                      <span>Metric</span>
+                      <span>Value</span>
+                    </div>
+                    {singleRows.map((row) => (
+                      <SingleMetricRow key={row.label} label={row.label} value={row.value} />
+                    ))}
+                  </div>
+
+                  <div>
+                    <h3>{resultMode.toUpperCase()} allocation</h3>
+                    <AllocationTable allocations={result.allocations} />
+                  </div>
                 </div>
-                <div>
-                  <h3>VCG allocation</h3>
-                  <AllocationTable allocations={result.vcg.allocations} />
-                </div>
-              </div>
+              )}
             </>
           ) : (
             <div className="empty-state">
