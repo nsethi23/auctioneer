@@ -145,7 +145,7 @@ button {
 
 .mechanism-controls {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -413,6 +413,40 @@ button:disabled {
 .single-result {
   display: grid;
   gap: 22px;
+}
+
+.efficiency-result {
+  display: grid;
+  gap: 18px;
+}
+
+.efficiency-summary {
+  display: grid;
+  gap: 6px;
+  border: 1px solid oklch(84% 0.03 245);
+  border-radius: 8px;
+  padding: 18px;
+  background: oklch(96% 0.014 245);
+}
+
+.efficiency-summary span {
+  color: oklch(44% 0.04 250);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.efficiency-summary strong {
+  color: oklch(24% 0.08 245);
+  font-size: 34px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.efficiency-summary small {
+  max-width: 62ch;
+  color: oklch(42% 0.035 250);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .single-result h3 {

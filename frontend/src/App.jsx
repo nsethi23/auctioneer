@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { checkHealth, compareAuctions, runGspAuction, runVcgAuction } from './api'
+import {
+  checkHealth,
+  compareAuctions,
+  computePriceOfAnarchy,
+  runGspAuction,
+  runVcgAuction,
+} from './api'
 import './App.css'
 
 const sampleMarket = {
@@ -18,7 +24,18 @@ const metricLabels = {
   bidder_surplus: 'Bidder surplus',
 }
 
+const efficiencyLabels = {
+  optimal_welfare: 'Optimal welfare',
+  strategic_welfare: 'Strategic GSP welfare',
+  price_of_anarchy: 'Price of anarchy',
+  welfare_loss: 'Welfare loss',
+}
+
 function formatNumber(value) {
+  if (value === Infinity) {
+    return '∞'
+  }
+
   return new Intl.NumberFormat('en-US', {
     maximumFractionDigits: 2,
     minimumFractionDigits: 0,
@@ -155,11 +172,22 @@ function App() {
   }, [result, resultMode])
 
   const singleRows = useMemo(() => {
-    if (!result || resultMode === 'compare') {
+    if (!result || resultMode === 'compare' || resultMode === 'poa') {
       return []
     }
 
     return Object.entries(metricLabels).map(([metric, label]) => ({
+      label,
+      value: result[metric],
+    }))
+  }, [result, resultMode])
+
+  const efficiencyRows = useMemo(() => {
+    if (!result || resultMode !== 'poa') {
+      return []
+    }
+
+    return Object.entries(efficiencyLabels).map(([metric, label]) => ({
       label,
       value: result[metric],
     }))
@@ -180,6 +208,13 @@ function App() {
         )
       } else if (mode === 'vcg') {
         setResult(await runVcgAuction(market))
+      } else if (mode === 'poa') {
+        setResult(
+          await computePriceOfAnarchy({
+            bidders: market.bidders,
+            ctrs: market.ctrs,
+          }),
+        )
       } else {
         setResult(await compareAuctions(market))
       }
@@ -252,10 +287,18 @@ function App() {
               >
                 VCG only
               </button>
+              <button
+                type="button"
+                className={resultMode === 'poa' ? 'mode-button active' : 'mode-button'}
+                onClick={() => runExperiment('poa')}
+                disabled={isLoading}
+              >
+                Efficiency loss
+              </button>
             </div>
             <p className="mode-note">
-              GSP uses reserve and quality scores. VCG uses reserve. Comparison uses the base
-              GSP/VCG endpoint.
+              GSP uses reserve and quality scores. VCG uses reserve. Efficiency loss compares
+              optimal welfare against strategic GSP welfare.
             </p>
           </div>
 
@@ -344,9 +387,19 @@ function App() {
           <div className="panel-heading">
             <div>
               <p className="eyebrow">
-                {resultMode === 'compare' ? 'GSP vs VCG' : resultMode.toUpperCase()}
+                {resultMode === 'compare'
+                  ? 'GSP vs VCG'
+                  : resultMode === 'poa'
+                    ? 'Efficiency'
+                    : resultMode.toUpperCase()}
               </p>
-              <h2>{resultMode === 'compare' ? 'Mechanism comparison' : 'Auction result'}</h2>
+              <h2>
+                {resultMode === 'compare'
+                  ? 'Mechanism comparison'
+                  : resultMode === 'poa'
+                    ? 'Price of anarchy'
+                    : 'Auction result'}
+              </h2>
             </div>
             <span className={result ? 'status ready' : 'status'}>
               {result ? 'Result ready' : 'Waiting'}
@@ -386,6 +439,27 @@ function App() {
                     </div>
                   </div>
                 </>
+              ) : resultMode === 'poa' ? (
+                <div className="efficiency-result">
+                  <div className="efficiency-summary">
+                    <span>Welfare loss</span>
+                    <strong>{formatNumber(result.welfare_loss)}</strong>
+                    <small>
+                      Optimal welfare is {formatNumber(result.optimal_welfare)} versus strategic
+                      GSP welfare of {formatNumber(result.strategic_welfare)}.
+                    </small>
+                  </div>
+
+                  <div className="single-metric-table">
+                    <div className="single-metric-row table-head">
+                      <span>Metric</span>
+                      <span>Value</span>
+                    </div>
+                    {efficiencyRows.map((row) => (
+                      <SingleMetricRow key={row.label} label={row.label} value={row.value} />
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <div className="single-result">
                   <div className="single-metric-table">

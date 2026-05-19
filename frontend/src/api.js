@@ -28,6 +28,10 @@ export async function runVcgAuction(payload) {
   return postJson('/auction/vcg', payload, 'VCG auction')
 }
 
+export async function computePriceOfAnarchy(payload) {
+  return postJson('/metrics/price-of-anarchy', payload, 'Price of anarchy')
+}
+
 export async function checkHealth() {
   const response = await fetch(`${API_BASE_URL}/health`)
 
