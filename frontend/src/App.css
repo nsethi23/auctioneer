@@ -290,6 +290,12 @@ button:disabled {
   gap: 10px;
 }
 
+.rl-settings {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .bidder-editor {
   display: grid;
   grid-template-columns: 34px repeat(3, minmax(0, 1fr));
@@ -365,6 +371,7 @@ button:disabled {
 
 .metric-table,
 .candidate-table,
+.checkpoint-table,
 .deviation-table,
 .single-metric-table,
 .allocation-table {
@@ -376,6 +383,7 @@ button:disabled {
 
 .metric-row,
 .candidate-row,
+.checkpoint-row,
 .deviation-row,
 .single-metric-row,
 .table-head,
@@ -409,6 +417,13 @@ button:disabled {
   padding: 13px 16px;
 }
 
+.checkpoint-row {
+  grid-template-columns:
+    minmax(70px, 0.5fr) repeat(5, minmax(92px, 1fr));
+  gap: 12px;
+  padding: 13px 14px;
+}
+
 .candidate-row.best-candidate {
   background: oklch(95% 0.035 160);
 }
@@ -423,6 +438,7 @@ button:disabled {
 
 .metric-row:last-child,
 .candidate-row:last-child,
+.checkpoint-row:last-child,
 .deviation-row:last-child,
 .single-metric-row:last-child,
 .table-row:last-child {
@@ -431,6 +447,7 @@ button:disabled {
 
 .metric-row strong,
 .candidate-row span,
+.checkpoint-row span,
 .deviation-row span,
 .single-metric-row strong,
 .table-row span {
@@ -463,7 +480,8 @@ button:disabled {
 }
 
 .nash-result,
-.best-response-result {
+.best-response-result,
+.rl-result {
   display: grid;
   gap: 18px;
 }
@@ -478,7 +496,8 @@ button:disabled {
 }
 
 .nash-summary,
-.best-response-summary {
+.best-response-summary,
+.rl-summary {
   display: grid;
   gap: 6px;
   border: 1px solid oklch(84% 0.03 245);
@@ -499,6 +518,7 @@ button:disabled {
 
 .nash-summary span,
 .best-response-summary span,
+.rl-summary span,
 .efficiency-summary span {
   color: oklch(44% 0.04 250);
   font-size: 13px;
@@ -507,6 +527,7 @@ button:disabled {
 
 .nash-summary strong,
 .best-response-summary strong,
+.rl-summary strong,
 .efficiency-summary strong {
   color: oklch(24% 0.08 245);
   font-size: 34px;
@@ -516,6 +537,7 @@ button:disabled {
 
 .nash-summary small,
 .best-response-summary small,
+.rl-summary small,
 .efficiency-summary small {
   max-width: 62ch;
   color: oklch(42% 0.035 250);
@@ -603,6 +625,7 @@ button:disabled {
   .slot-strip,
   .mechanism-controls,
   .strategy-search,
+  .rl-settings,
   .bidder-editor {
     grid-template-columns: 1fr;
   }

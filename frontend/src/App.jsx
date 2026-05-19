@@ -7,6 +7,7 @@ import {
   computePriceOfAnarchy,
   runGspAuction,
   runVcgAuction,
+  trackRlConvergence,
 } from './api'
 import './App.css'
 
@@ -21,6 +22,14 @@ const sampleMarket = {
 }
 
 const defaultCandidateBids = '0, 5, 6, 8, 10'
+
+const defaultRlSettings = {
+  num_episodes: 100,
+  checkpoint_interval: 10,
+  learning_rate: 0.1,
+  discount_factor: 0,
+  epsilon: 0.1,
+}
 
 const metricLabels = {
   revenue: 'Revenue',
@@ -133,6 +142,7 @@ function App() {
   const [market, setMarket] = useState(sampleMarket)
   const [candidateBidsText, setCandidateBidsText] = useState(defaultCandidateBids)
   const [selectedBidderId, setSelectedBidderId] = useState(sampleMarket.bidders[0].id)
+  const [rlSettings, setRlSettings] = useState(defaultRlSettings)
   const [result, setResult] = useState(null)
   const [resultMode, setResultMode] = useState('compare')
   const [apiStatus, setApiStatus] = useState('checking')
@@ -184,6 +194,7 @@ function App() {
     setMarket(sampleMarket)
     setCandidateBidsText(defaultCandidateBids)
     setSelectedBidderId(sampleMarket.bidders[0].id)
+    setRlSettings(defaultRlSettings)
     setResult(null)
     setError('')
   }
@@ -202,7 +213,7 @@ function App() {
   }, [result, resultMode])
 
   const singleRows = useMemo(() => {
-    if (!result || resultMode === 'compare' || resultMode === 'poa') {
+    if (!result || (resultMode !== 'gsp' && resultMode !== 'vcg')) {
       return []
     }
 
@@ -230,6 +241,22 @@ function App() {
 
     return result.results
   }, [result, resultMode])
+
+  const checkpointRows = useMemo(() => {
+    if (!result || resultMode !== 'rl') {
+      return []
+    }
+
+    return result.checkpoints
+  }, [result, resultMode])
+
+  function updateRlSetting(field, value) {
+    setRlSettings((currentSettings) => ({
+      ...currentSettings,
+      [field]: value,
+    }))
+    setResult(null)
+  }
 
   async function runExperiment(mode) {
     setIsLoading(true)
@@ -267,6 +294,31 @@ function App() {
             bidders: market.bidders,
             ctrs: market.ctrs,
             candidate_bids: candidateBids,
+          }),
+        )
+        return
+      }
+
+      if (mode === 'rl') {
+        const candidateBids = parseCandidateBids(candidateBidsText)
+        const targetBidder = market.bidders.find((bidder) => bidder.id === selectedBidderId)
+
+        if (candidateBids.length === 0) {
+          throw new Error('Enter at least one candidate bid')
+        }
+
+        if (!targetBidder) {
+          throw new Error('Select a bidder in the current market')
+        }
+
+        setResult(
+          await trackRlConvergence({
+            bidder_id: targetBidder.id,
+            value: targetBidder.value,
+            other_bidders: market.bidders.filter((bidder) => bidder.id !== targetBidder.id),
+            ctrs: market.ctrs,
+            candidate_bids: candidateBids,
+            ...rlSettings,
           }),
         )
         return
@@ -384,10 +436,18 @@ function App() {
               >
                 Best response
               </button>
+              <button
+                type="button"
+                className={resultMode === 'rl' ? 'mode-button active' : 'mode-button'}
+                onClick={() => runExperiment('rl')}
+                disabled={isLoading}
+              >
+                RL convergence
+              </button>
             </div>
             <p className="mode-note">
-              Best response holds other bids fixed and searches for the selected bidder's
-              utility-maximizing bid.
+              RL convergence trains the selected bidder from auction rewards, then compares learned
+              bids against the analytical best response.
             </p>
           </div>
 
@@ -416,6 +476,43 @@ function App() {
                   setSelectedBidderId(value)
                   setResult(null)
                 }}
+              />
+            </div>
+          </div>
+
+          <div className="input-section">
+            <div className="section-label">
+              <span>RL training</span>
+              <small>Episode count and learning parameters</small>
+            </div>
+            <div className="rl-settings">
+              <MarketInput
+                label="Episodes"
+                value={rlSettings.num_episodes}
+                onChange={(value) => updateRlSetting('num_episodes', value)}
+              />
+              <MarketInput
+                label="Checkpoint"
+                value={rlSettings.checkpoint_interval}
+                onChange={(value) => updateRlSetting('checkpoint_interval', value)}
+              />
+              <MarketInput
+                label="Learn rate"
+                value={rlSettings.learning_rate}
+                step="0.05"
+                onChange={(value) => updateRlSetting('learning_rate', value)}
+              />
+              <MarketInput
+                label="Epsilon"
+                value={rlSettings.epsilon}
+                step="0.05"
+                onChange={(value) => updateRlSetting('epsilon', value)}
+              />
+              <MarketInput
+                label="Discount"
+                value={rlSettings.discount_factor}
+                step="0.05"
+                onChange={(value) => updateRlSetting('discount_factor', value)}
               />
             </div>
           </div>
@@ -513,7 +610,9 @@ function App() {
                       ? 'Nash'
                       : resultMode === 'best-response'
                         ? 'Best response'
-                      : resultMode.toUpperCase()}
+                        : resultMode === 'rl'
+                          ? 'RL'
+                          : resultMode.toUpperCase()}
               </p>
               <h2>
                 {resultMode === 'compare'
@@ -524,7 +623,9 @@ function App() {
                       ? 'Equilibrium check'
                       : resultMode === 'best-response'
                         ? 'Bid search'
-                      : 'Auction result'}
+                        : resultMode === 'rl'
+                          ? 'Convergence'
+                          : 'Auction result'}
               </h2>
             </div>
             <span className={result ? 'status ready' : 'status'}>
@@ -653,6 +754,38 @@ function App() {
                       >
                         <span>{formatNumber(candidate.bid)}</span>
                         <span>{formatNumber(candidate.utility)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : resultMode === 'rl' ? (
+                <div className="rl-result">
+                  <div className="rl-summary">
+                    <span>Best response benchmark</span>
+                    <strong>Bid {formatNumber(result.best_response.bid)}</strong>
+                    <small>
+                      Best-response utility is {formatNumber(result.best_response.utility)} for
+                      selected bidder {selectedBidderId}.
+                    </small>
+                  </div>
+
+                  <div className="checkpoint-table">
+                    <div className="checkpoint-row table-head">
+                      <span>Episode</span>
+                      <span>Learned bid</span>
+                      <span>Q-value</span>
+                      <span>Bid gap</span>
+                      <span>Utility gap</span>
+                      <span>Recent reward</span>
+                    </div>
+                    {checkpointRows.map((checkpoint) => (
+                      <div className="checkpoint-row" key={checkpoint.episode}>
+                        <span>{checkpoint.episode}</span>
+                        <span>{formatNumber(checkpoint.learned_bid)}</span>
+                        <span>{formatNumber(checkpoint.learned_q_value)}</span>
+                        <span>{formatNumber(checkpoint.bid_gap)}</span>
+                        <span>{formatNumber(checkpoint.utility_gap)}</span>
+                        <span>{formatNumber(checkpoint.average_recent_reward)}</span>
                       </div>
                     ))}
                   </div>

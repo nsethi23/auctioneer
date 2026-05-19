@@ -40,6 +40,10 @@ export async function computeBestResponse(payload) {
   return postJson('/best-response', payload, 'Best response')
 }
 
+export async function trackRlConvergence(payload) {
+  return postJson('/rl/convergence', payload, 'RL convergence')
+}
+
 export async function checkHealth() {
   const response = await fetch(`${API_BASE_URL}/health`)
 
