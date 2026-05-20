@@ -116,6 +116,32 @@ Open the generated API docs:
 http://127.0.0.1:8000/docs
 ```
 
+## Frontend Setup
+
+The frontend is a Vite React dashboard for running the auction experiments.
+
+Install frontend dependencies:
+
+```bash
+cd frontend
+npm install
+```
+
+Run the dashboard:
+
+```bash
+npm run dev
+```
+
+Open the local app:
+
+```text
+http://127.0.0.1:5173
+```
+
+If the backend is not running, the dashboard will show the API as offline and
+auction runs will fail until FastAPI is started.
+
 ## API Endpoints
 
 The backend exposes the simulation engine through FastAPI:
@@ -130,6 +156,10 @@ The backend exposes the simulation engine through FastAPI:
   GSP welfare.
 - `POST /nash/check`: checks whether a bid profile has profitable unilateral
   deviations over a candidate bid grid.
+- `POST /best-response`: finds the utility-maximizing GSP bid for one bidder
+  while holding other bids fixed.
+- `POST /best-response/curve`: sweeps private values and candidate bids for
+  heatmap-ready best-response data.
 - `POST /rl/convergence`: trains a Q-learning bidder and returns convergence
   checkpoints against the analytical best response.
 - `POST /simulation/statistical`: runs repeated GSP/VCG simulations and returns

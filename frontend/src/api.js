@@ -48,6 +48,10 @@ export async function trackRlConvergence(payload) {
   return postJson('/rl/convergence', payload, 'RL convergence')
 }
 
+export async function runStatisticalSimulation(payload) {
+  return postJson('/simulation/statistical', payload, 'Statistical simulation')
+}
+
 export async function checkHealth() {
   const response = await fetch(`${API_BASE_URL}/health`)
 

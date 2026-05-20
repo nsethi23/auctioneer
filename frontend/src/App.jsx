@@ -7,6 +7,7 @@ import {
   computeBestResponseCurve,
   computePriceOfAnarchy,
   runGspAuction,
+  runStatisticalSimulation,
   runVcgAuction,
   trackRlConvergence,
 } from './api'
@@ -31,6 +32,15 @@ const defaultRlSettings = {
   learning_rate: 0.1,
   discount_factor: 0,
   epsilon: 0.1,
+}
+
+const defaultStatSettings = {
+  num_auctions: 100,
+  num_bidders: 5,
+  min_value: 1,
+  max_value: 10,
+  num_resamples: 100,
+  confidence: 0.95,
 }
 
 const metricLabels = {
@@ -120,6 +130,41 @@ function SingleMetricRow({ label, value }) {
     <div className="single-metric-row">
       <span>{label}</span>
       <strong>{formatNumber(value)}</strong>
+    </div>
+  )
+}
+
+function ConfidenceIntervalTable({ metrics }) {
+  const rows = []
+
+  for (const mechanism of ['gsp', 'vcg', 'difference']) {
+    for (const [metric, label] of Object.entries(metricLabels)) {
+      rows.push({
+        mechanism,
+        label,
+        interval: metrics[mechanism][metric],
+      })
+    }
+  }
+
+  return (
+    <div className="confidence-table">
+      <div className="confidence-row table-head">
+        <span>Group</span>
+        <span>Metric</span>
+        <span>Mean</span>
+        <span>Lower</span>
+        <span>Upper</span>
+      </div>
+      {rows.map((row) => (
+        <div className="confidence-row" key={`${row.mechanism}-${row.label}`}>
+          <span>{row.mechanism.toUpperCase()}</span>
+          <span>{row.label}</span>
+          <span>{formatNumber(row.interval.mean)}</span>
+          <span>{formatNumber(row.interval.lower)}</span>
+          <span>{formatNumber(row.interval.upper)}</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -358,6 +403,7 @@ function App() {
   const [valueGridText, setValueGridText] = useState(defaultValueGrid)
   const [selectedBidderId, setSelectedBidderId] = useState(sampleMarket.bidders[0].id)
   const [rlSettings, setRlSettings] = useState(defaultRlSettings)
+  const [statSettings, setStatSettings] = useState(defaultStatSettings)
   const [result, setResult] = useState(null)
   const [resultMode, setResultMode] = useState('compare')
   const [apiStatus, setApiStatus] = useState('checking')
@@ -405,12 +451,71 @@ function App() {
     setResult(null)
   }
 
+  function addSlot() {
+    setMarket((currentMarket) => ({
+      ...currentMarket,
+      ctrs: [...currentMarket.ctrs, 0.1],
+    }))
+    setResult(null)
+  }
+
+  function removeSlot(index) {
+    setMarket((currentMarket) => ({
+      ...currentMarket,
+      ctrs: currentMarket.ctrs.filter((_, ctrIndex) => ctrIndex !== index),
+    }))
+    setResult(null)
+  }
+
+  function addBidder() {
+    setMarket((currentMarket) => {
+      const usedIds = new Set(currentMarket.bidders.map((bidder) => bidder.id))
+      let nextIndex = 0
+
+      while (usedIds.has(String.fromCharCode(65 + nextIndex))) {
+        nextIndex += 1
+      }
+
+      const bidderId = String.fromCharCode(65 + nextIndex)
+      const nextBidders = [
+        ...currentMarket.bidders,
+        {
+          id: bidderId,
+          value: 5,
+          bid: 5,
+          quality_score: 1,
+        },
+      ]
+
+      return {
+        ...currentMarket,
+        bidders: nextBidders,
+      }
+    })
+    setResult(null)
+  }
+
+  function removeBidder(index) {
+    const nextBidders = market.bidders.filter((_, bidderIndex) => bidderIndex !== index)
+
+    if (!nextBidders.some((bidder) => bidder.id === selectedBidderId) && nextBidders.length > 0) {
+      setSelectedBidderId(nextBidders[0].id)
+    }
+
+    setMarket((currentMarket) => ({
+      ...currentMarket,
+      bidders: nextBidders,
+    }))
+    setResult(null)
+  }
+
   function resetMarket() {
     setMarket(sampleMarket)
     setCandidateBidsText(defaultCandidateBids)
     setValueGridText(defaultValueGrid)
     setSelectedBidderId(sampleMarket.bidders[0].id)
     setRlSettings(defaultRlSettings)
+    setStatSettings(defaultStatSettings)
     setResult(null)
     setError('')
   }
@@ -476,6 +581,14 @@ function App() {
 
   function updateRlSetting(field, value) {
     setRlSettings((currentSettings) => ({
+      ...currentSettings,
+      [field]: value,
+    }))
+    setResult(null)
+  }
+
+  function updateStatSetting(field, value) {
+    setStatSettings((currentSettings) => ({
       ...currentSettings,
       [field]: value,
     }))
@@ -567,6 +680,20 @@ function App() {
             ctrs: market.ctrs,
             values,
             candidate_bids: candidateBids,
+          }),
+        )
+        return
+      }
+
+      if (mode === 'stats') {
+        if (market.ctrs.length === 0) {
+          throw new Error('Add at least one slot CTR before running statistical simulation')
+        }
+
+        setResult(
+          await runStatisticalSimulation({
+            ...statSettings,
+            ctrs: market.ctrs,
           }),
         )
         return
@@ -700,9 +827,17 @@ function App() {
               >
                 Heatmap
               </button>
+              <button
+                type="button"
+                className={resultMode === 'stats' ? 'mode-button active' : 'mode-button'}
+                onClick={() => runExperiment('stats')}
+                disabled={isLoading}
+              >
+                Statistics
+              </button>
             </div>
             <p className="mode-note">
-              Heatmap sweeps private value and candidate bid to show where utility is highest.
+              Statistics runs many synthetic auctions and reports bootstrap confidence intervals.
             </p>
           </div>
 
@@ -792,6 +927,46 @@ function App() {
 
           <div className="input-section">
             <div className="section-label">
+              <span>Statistical simulation</span>
+              <small>Repeated synthetic auction settings</small>
+            </div>
+            <div className="stat-settings">
+              <MarketInput
+                label="Auctions"
+                value={statSettings.num_auctions}
+                onChange={(value) => updateStatSetting('num_auctions', value)}
+              />
+              <MarketInput
+                label="Bidders"
+                value={statSettings.num_bidders}
+                onChange={(value) => updateStatSetting('num_bidders', value)}
+              />
+              <MarketInput
+                label="Min value"
+                value={statSettings.min_value}
+                onChange={(value) => updateStatSetting('min_value', value)}
+              />
+              <MarketInput
+                label="Max value"
+                value={statSettings.max_value}
+                onChange={(value) => updateStatSetting('max_value', value)}
+              />
+              <MarketInput
+                label="Resamples"
+                value={statSettings.num_resamples}
+                onChange={(value) => updateStatSetting('num_resamples', value)}
+              />
+              <MarketInput
+                label="Confidence"
+                value={statSettings.confidence}
+                step="0.01"
+                onChange={(value) => updateStatSetting('confidence', value)}
+              />
+            </div>
+          </div>
+
+          <div className="input-section">
+            <div className="section-label">
               <span>Pricing constraint</span>
               <small>Minimum bid for allocation</small>
             </div>
@@ -816,15 +991,28 @@ function App() {
             </div>
             <div className="slot-strip">
               {market.ctrs.map((ctr, index) => (
-                <MarketInput
-                  key={`slot-${index}`}
-                  label={`Slot ${index + 1}`}
-                  value={ctr}
-                  step="0.05"
-                  onChange={(value) => updateCtr(index, value)}
-                />
+                <div className="field-with-action" key={`slot-${index}`}>
+                  <MarketInput
+                    label={`Slot ${index + 1}`}
+                    value={ctr}
+                    step="0.05"
+                    onChange={(value) => updateCtr(index, value)}
+                  />
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => removeSlot(index)}
+                    disabled={market.ctrs.length <= 1}
+                    aria-label={`Remove slot ${index + 1}`}
+                  >
+                    −
+                  </button>
+                </div>
               ))}
             </div>
+            <button type="button" className="secondary-button full-width-button" onClick={addSlot}>
+              Add slot
+            </button>
           </div>
 
           <div className="input-section">
@@ -852,9 +1040,21 @@ function App() {
                     step="0.1"
                     onChange={(value) => updateBidder(index, 'quality_score', value)}
                   />
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => removeBidder(index)}
+                    disabled={market.bidders.length <= 1}
+                    aria-label={`Remove bidder ${bidder.id}`}
+                  >
+                    −
+                  </button>
                 </div>
               ))}
             </div>
+            <button type="button" className="secondary-button full-width-button" onClick={addBidder}>
+              Add bidder
+            </button>
           </div>
 
           <div className="market-summary">
@@ -887,7 +1087,9 @@ function App() {
                           ? 'RL'
                           : resultMode === 'heatmap'
                             ? 'Heatmap'
-                          : resultMode.toUpperCase()}
+                            : resultMode === 'stats'
+                              ? 'Statistics'
+                              : resultMode.toUpperCase()}
               </p>
               <h2>
                 {resultMode === 'compare'
@@ -902,7 +1104,9 @@ function App() {
                           ? 'Convergence'
                           : resultMode === 'heatmap'
                             ? 'Best-response heatmap'
-                          : 'Auction result'}
+                            : resultMode === 'stats'
+                              ? 'Bootstrap intervals'
+                              : 'Auction result'}
               </h2>
             </div>
             <span className={result ? 'status ready' : 'status'}>
@@ -1093,6 +1297,19 @@ function App() {
                     curve={heatmapCurve}
                     candidateBids={result.candidate_bids}
                   />
+                </div>
+              ) : resultMode === 'stats' ? (
+                <div className="stats-result">
+                  <div className="stats-summary">
+                    <span>Repeated auctions</span>
+                    <strong>{formatNumber(result.num_auctions)}</strong>
+                    <small>
+                      {formatNumber(result.confidence * 100)}% bootstrap confidence intervals from{' '}
+                      {formatNumber(result.num_resamples)} resamples.
+                    </small>
+                  </div>
+
+                  <ConfidenceIntervalTable metrics={result.metrics} />
                 </div>
               ) : (
                 <div className="single-result">

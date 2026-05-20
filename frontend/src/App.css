@@ -296,9 +296,48 @@ button:disabled {
   gap: 10px;
 }
 
+.stat-settings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.field-with-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: end;
+  gap: 8px;
+}
+
+.icon-button {
+  display: inline-grid;
+  min-width: 36px;
+  min-height: 36px;
+  place-items: center;
+  padding: 0;
+  color: oklch(38% 0.08 245);
+  border-color: oklch(80% 0.035 245);
+  background: oklch(98% 0.006 250);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.icon-button:hover {
+  background: oklch(94% 0.018 245);
+}
+
+.icon-button:disabled {
+  color: oklch(62% 0.02 250);
+  background: oklch(94% 0.006 250);
+}
+
+.full-width-button {
+  width: 100%;
+}
+
 .bidder-editor {
   display: grid;
-  grid-template-columns: 34px repeat(3, minmax(0, 1fr));
+  grid-template-columns: 34px repeat(3, minmax(0, 1fr)) 36px;
   align-items: end;
   gap: 10px;
   border: 1px solid oklch(86% 0.014 250);
@@ -372,6 +411,7 @@ button:disabled {
 .metric-table,
 .candidate-table,
 .checkpoint-table,
+.confidence-table,
 .deviation-table,
 .single-metric-table,
 .allocation-table {
@@ -523,6 +563,7 @@ button:disabled {
 .metric-row,
 .candidate-row,
 .checkpoint-row,
+.confidence-row,
 .deviation-row,
 .single-metric-row,
 .table-head,
@@ -563,6 +604,12 @@ button:disabled {
   padding: 13px 14px;
 }
 
+.confidence-row {
+  grid-template-columns: 0.75fr minmax(130px, 1fr) repeat(3, minmax(80px, 0.75fr));
+  gap: 12px;
+  padding: 13px 14px;
+}
+
 .candidate-row.best-candidate {
   background: oklch(95% 0.035 160);
 }
@@ -593,6 +640,7 @@ button:disabled {
 .metric-row:last-child,
 .candidate-row:last-child,
 .checkpoint-row:last-child,
+.confidence-row:last-child,
 .deviation-row:last-child,
 .single-metric-row:last-child,
 .table-row:last-child {
@@ -602,6 +650,7 @@ button:disabled {
 .metric-row strong,
 .candidate-row span,
 .checkpoint-row span,
+.confidence-row span,
 .deviation-row span,
 .single-metric-row strong,
 .table-row span {
@@ -635,7 +684,8 @@ button:disabled {
 
 .nash-result,
 .best-response-result,
-.rl-result {
+.rl-result,
+.stats-result {
   display: grid;
   gap: 18px;
 }
@@ -776,7 +826,8 @@ button:disabled {
 
 .nash-summary,
 .best-response-summary,
-.rl-summary {
+.rl-summary,
+.stats-summary {
   display: grid;
   gap: 6px;
   border: 1px solid oklch(84% 0.03 245);
@@ -798,6 +849,7 @@ button:disabled {
 .nash-summary span,
 .best-response-summary span,
 .rl-summary span,
+.stats-summary span,
 .efficiency-summary span {
   color: oklch(44% 0.04 250);
   font-size: 13px;
@@ -807,6 +859,7 @@ button:disabled {
 .nash-summary strong,
 .best-response-summary strong,
 .rl-summary strong,
+.stats-summary strong,
 .efficiency-summary strong {
   color: oklch(24% 0.08 245);
   font-size: 34px;
@@ -817,6 +870,7 @@ button:disabled {
 .nash-summary small,
 .best-response-summary small,
 .rl-summary small,
+.stats-summary small,
 .efficiency-summary small {
   max-width: 62ch;
   color: oklch(42% 0.035 250);
@@ -905,6 +959,7 @@ button:disabled {
   .mechanism-controls,
   .strategy-search,
   .rl-settings,
+  .stat-settings,
   .bidder-editor {
     grid-template-columns: 1fr;
   }
