@@ -15,6 +15,8 @@ def run_repeated_comparisons_with_confidence(
     confidence=0.95,
     rng=None,
     distribution="uniform",
+    strategy=None,
+    strategy_kwargs=None,
 ):
     if num_auctions <= 0:
         raise ValueError("num_auctions must be positive")
@@ -48,12 +50,20 @@ def run_repeated_comparisons_with_confidence(
     }
 
     for _ in range(num_auctions):
+        # Only forward strategy kwargs when a non-default strategy is requested.
+        extra = {}
+        if strategy is not None:
+            extra["strategy"] = strategy
+        if strategy_kwargs is not None:
+            extra["strategy_kwargs"] = strategy_kwargs
+
         bidders = generate_bidders(
             num_bidders=num_bidders,
             min_value=min_value,
             max_value=max_value,
             rng=rng,
             distribution=distribution,
+            **extra,
         )
 
         comparison = compare_gsp_and_vcg(bidders, ctrs)

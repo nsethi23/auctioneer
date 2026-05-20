@@ -8,6 +8,7 @@ from auctioneer.agents.best_response import (
 )
 from auctioneer.agents.nash import check_gsp_nash_equilibrium
 from auctioneer.agents.exp3_evaluation import track_exp3_convergence
+from auctioneer.agents.strategies import shaded_bid, truthful_bid
 from auctioneer.agents.multi_agent_q_learning import train_multi_agent_q_learning
 from auctioneer.agents.q_learning_evaluation import track_q_learning_convergence
 from auctioneer.auctions.gsp import run_gsp_auction
@@ -130,6 +131,18 @@ class StatisticalSimulationRequest(BaseModel):
     ctrs: list[float]
     min_value: float
     max_value: float
+    num_resamples: int = 1000
+    confidence: float = 0.95
+    distribution: str = "uniform"
+
+
+class StrategyComparisonRequest(BaseModel):
+    num_auctions: int
+    num_bidders: int
+    ctrs: list[float]
+    min_value: float
+    max_value: float
+    shade_factor: float = 0.7
     num_resamples: int = 1000
     confidence: float = 0.95
     distribution: str = "uniform"
@@ -322,3 +335,50 @@ def train_multi_agent_rl(request: MultiAgentRLRequest):
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"history": result["history"]}
+
+
+@app.post("/simulation/strategy-comparison")
+def compare_strategy_simulation(request: StrategyComparisonRequest):
+    # Use a shared seed so both profiles face the same randomly-drawn markets.
+    # This isolates the effect of strategy from market variance.
+    import random as _random
+
+    seed = _random.randint(0, 2**32 - 1)
+
+    try:
+        truthful = run_repeated_comparisons_with_confidence(
+            num_auctions=request.num_auctions,
+            num_bidders=request.num_bidders,
+            ctrs=request.ctrs,
+            min_value=request.min_value,
+            max_value=request.max_value,
+            num_resamples=request.num_resamples,
+            confidence=request.confidence,
+            distribution=request.distribution,
+            strategy=truthful_bid,
+            rng=_random.Random(seed),
+        )
+        shaded = run_repeated_comparisons_with_confidence(
+            num_auctions=request.num_auctions,
+            num_bidders=request.num_bidders,
+            ctrs=request.ctrs,
+            min_value=request.min_value,
+            max_value=request.max_value,
+            num_resamples=request.num_resamples,
+            confidence=request.confidence,
+            distribution=request.distribution,
+            strategy=shaded_bid,
+            strategy_kwargs={"shade_factor": request.shade_factor},
+            rng=_random.Random(seed),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return {
+        "truthful": truthful["metrics"],
+        "shaded": shaded["metrics"],
+        "shade_factor": request.shade_factor,
+        "num_auctions": request.num_auctions,
+        "confidence": request.confidence,
+        "num_resamples": request.num_resamples,
+    }
