@@ -52,6 +52,14 @@ export async function runStatisticalSimulation(payload) {
   return postJson('/simulation/statistical', payload, 'Statistical simulation')
 }
 
+export async function trainMultiAgentRl(payload) {
+  return postJson('/rl/multi-agent', payload, 'Multi-agent RL training')
+}
+
+export async function compareStrategies(payload) {
+  return postJson('/simulation/strategy-comparison', payload, 'Strategy comparison')
+}
+
 export async function checkHealth() {
   const response = await fetch(`${API_BASE_URL}/health`)
 

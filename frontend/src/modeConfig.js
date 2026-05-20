@@ -2,7 +2,7 @@ export const modeCategories = [
   {
     id: 'auction',
     label: 'Auction',
-    modes: ['compare', 'gsp', 'vcg', 'poa'],
+    modes: ['compare', 'gsp', 'vcg', 'poa', 'animate'],
   },
   {
     id: 'strategy',
@@ -12,12 +12,12 @@ export const modeCategories = [
   {
     id: 'learning',
     label: 'Learning',
-    modes: ['rl'],
+    modes: ['rl', 'multi-agent'],
   },
   {
     id: 'statistics',
     label: 'Statistics',
-    modes: ['stats'],
+    modes: ['stats', 'strategy-compare'],
   },
 ]
 
@@ -102,6 +102,33 @@ export const modeConfig = {
     note: 'Run many synthetic auctions and report bootstrap confidence intervals.',
     emptyTitle: 'No statistical simulation yet',
     emptyText: 'Run statistics to estimate uncertainty around auction outcomes.',
+  },
+  animate: {
+    label: 'Animate',
+    action: 'Animate auction',
+    eyebrow: 'Animation',
+    title: 'Auction walkthrough',
+    note: 'Step through the GSP auction: bid ranking, slot assignment, and payment.',
+    emptyTitle: 'No animation yet',
+    emptyText: 'Animate to see bidder ranking and slot assignment step by step.',
+  },
+  'multi-agent': {
+    label: 'Multi-agent',
+    action: 'Train agents',
+    eyebrow: 'Multi-agent RL',
+    title: 'Agent bid trajectories',
+    note: 'Train all market bidders as Q-learning agents and track bid convergence.',
+    emptyTitle: 'No training run yet',
+    emptyText: 'Train agents to see how bids evolve across episodes.',
+  },
+  'strategy-compare': {
+    label: 'Strategy CI',
+    action: 'Compare strategies',
+    eyebrow: 'Strategy comparison',
+    title: 'Truthful vs shaded',
+    note: 'Compare bootstrap CIs for revenue, welfare, and surplus under truthful and shaded bidding.',
+    emptyTitle: 'No strategy comparison yet',
+    emptyText: 'Compare strategies to see how bid shading shifts outcomes.',
   },
 }
 

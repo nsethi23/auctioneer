@@ -3,6 +3,7 @@ import {
   checkHealth,
   checkNashEquilibrium,
   compareAuctions,
+  compareStrategies,
   computeBestResponse,
   computeBestResponseCurve,
   computePriceOfAnarchy,
@@ -10,6 +11,7 @@ import {
   runStatisticalSimulation,
   runVcgAuction,
   trackRlConvergence,
+  trainMultiAgentRl,
 } from './api'
 import { modeCategories, modeConfig, modeToCategory } from './modeConfig'
 import './App.css'
@@ -42,7 +44,18 @@ const defaultStatSettings = {
   max_value: 10,
   num_resamples: 100,
   confidence: 0.95,
+  shade_factor: 0.7,
 }
+
+// Per-agent colors for multi-agent trajectory chart
+const agentPalette = [
+  'oklch(72% 0.12 220)',
+  'oklch(73% 0.12 158)',
+  'oklch(73% 0.11 285)',
+  'oklch(74% 0.1 190)',
+  'oklch(72% 0.14 50)',
+  'oklch(70% 0.12 330)',
+]
 
 const metricLabels = {
   revenue: 'Revenue',
@@ -77,6 +90,7 @@ function getPercent(value, maxValue) {
 }
 
 const glossary = {
+  'Shade factor': 'Fraction of private value that shaded bidders submit as their bid (e.g. 0.7 means bid = 0.7 × value)',
   CTR: 'Click-through rate: probability a user clicks an ad in this slot position',
   Utility: "Bidder's value minus their payment for winning a slot (value − payment)",
   Welfare: "Sum of all winning bidders' private values, measuring allocative efficiency",
@@ -95,6 +109,223 @@ const glossary = {
 function GlossaryTerm({ term }) {
   const definition = glossary[term]
   return definition ? <abbr title={definition}>{term}</abbr> : <>{term}</>
+}
+
+function AuctionAnimationPanel({ allocations, bidders, step, playing, onPlay, onPause, onStep, onBack }) {
+  const maxSteps = allocations.length
+  const ranked = [...bidders].sort(
+    (a, b) => b.bid * (b.quality_score ?? 1) - a.bid * (a.quality_score ?? 1),
+  )
+  const revealedSlots = allocations.slice(0, step)
+  const assignedIds = new Set(revealedSlots.map((a) => a.bidder_id))
+
+  return (
+    <div className="animation-panel">
+      <div className="animation-columns">
+        <div className="animation-section">
+          <h3>Bid ranking</h3>
+          <div className="anim-rank-list">
+            {ranked.map((bidder, i) => {
+              const slot = revealedSlots.find((a) => a.bidder_id === bidder.id)
+              return (
+                <div
+                  key={bidder.id}
+                  className={`anim-rank-row ${assignedIds.has(bidder.id) ? 'assigned' : ''}`}
+                >
+                  <span className="rank-badge">{i + 1}</span>
+                  <div className="rank-info">
+                    <strong>{bidder.id}</strong>
+                    <span>Bid {formatNumber(bidder.bid)}</span>
+                  </div>
+                  {slot && <span className="rank-slot-tag">Slot {slot.slot + 1}</span>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="animation-section">
+          <h3>Slot assignment</h3>
+          <div className="anim-slot-list">
+            {allocations.map((allocation, i) => {
+              const revealed = i < step
+              return (
+                <div key={i} className={`anim-slot-row ${revealed ? 'revealed' : 'pending'}`}>
+                  <span className="anim-slot-label">Slot {i + 1}</span>
+                  {revealed ? (
+                    <div className="anim-slot-data">
+                      <strong>{allocation.bidder_id}</strong>
+                      <span><GlossaryTerm term="CTR" /> {formatNumber(allocation.ctr)}</span>
+                      <span>Pay {formatNumber(allocation.payment)}</span>
+                      <span className={allocation.utility > 0 ? 'positive' : ''}>
+                        Util {formatNumber(allocation.utility)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="anim-slot-pending">Waiting</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="animation-controls">
+        <button type="button" className="icon-button" onClick={onBack} disabled={step === 0}>
+          ←
+        </button>
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={playing ? onPause : onPlay}
+          disabled={step >= maxSteps && !playing}
+        >
+          {playing ? 'Pause' : step >= maxSteps ? 'Done' : 'Play'}
+        </button>
+        <button type="button" className="icon-button" onClick={onStep} disabled={step >= maxSteps}>
+          →
+        </button>
+        <span className="anim-counter">
+          {step} / {maxSteps} slots
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function MultiAgentChart({ history, bidderIds }) {
+  if (!history.length) return null
+
+  const width = 640
+  const height = 220
+  const padding = 36
+
+  const allBids = history.flatMap((e) => Object.values(e.bids))
+  const minBid = Math.min(...allBids, 0)
+  const maxBid = Math.max(...allBids, 1)
+  const bidRange = maxBid - minBid || 1
+  const maxEpisode = Math.max(...history.map((e) => e.episode), 1)
+
+  function ptX(episode) {
+    return padding + (episode / maxEpisode) * (width - padding * 2)
+  }
+
+  function ptY(bid) {
+    return height - padding - ((bid - minBid) / bidRange) * (height - padding * 2)
+  }
+
+  const yTicks = [0, 0.5, 1].map((t) => ({
+    value: minBid + t * bidRange,
+    y: height - padding - t * (height - padding * 2),
+  }))
+
+  return (
+    <div className="rl-chart">
+      <div className="chart-legend">
+        {bidderIds.map((id, i) => (
+          <span
+            key={id}
+            className="legend-item agent-legend"
+            style={{ '--agent-color': agentPalette[i % agentPalette.length] }}
+          >
+            {id}
+          </span>
+        ))}
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Multi-agent bid trajectories">
+        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
+        <line x1={padding} y1={padding} x2={padding} y2={height - padding} />
+        {yTicks.map((tick) => (
+          <g key={tick.value}>
+            <line x1={padding - 4} y1={tick.y} x2={padding} y2={tick.y} className="chart-tick" />
+            <text
+              x={padding - 6}
+              y={tick.y}
+              className="chart-axis-label"
+              textAnchor="end"
+              dominantBaseline="middle"
+            >
+              {formatNumber(tick.value)}
+            </text>
+          </g>
+        ))}
+        {bidderIds.map((id, i) => (
+          <polyline
+            key={id}
+            points={history.map((e) => `${ptX(e.episode)},${ptY(e.bids[id] ?? 0)}`).join(' ')}
+            fill="none"
+            stroke={agentPalette[i % agentPalette.length]}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={0.85}
+          />
+        ))}
+      </svg>
+    </div>
+  )
+}
+
+function StrategyComparisonPanel({ result }) {
+  const mechanisms = ['gsp', 'vcg']
+  const metrics = [
+    { key: 'revenue', label: 'Revenue' },
+    { key: 'welfare', label: 'Welfare' },
+    { key: 'bidder_surplus', label: 'Bidder surplus' },
+  ]
+
+  const allMeans = mechanisms.flatMap((m) =>
+    metrics.flatMap(({ key }) => [result.truthful[m][key].mean, result.shaded[m][key].mean]),
+  )
+  const maxMean = Math.max(...allMeans, 1)
+
+  return (
+    <div className="strategy-comparison-panel">
+      {mechanisms.map((mech) => (
+        <div key={mech} className="strategy-mech-group">
+          <h3>{mech.toUpperCase()}</h3>
+          {metrics.map(({ key, label }) => {
+            const t = result.truthful[mech][key]
+            const s = result.shaded[mech][key]
+            return (
+              <div key={key} className="strategy-ci-row">
+                <span className="strategy-ci-label">{label}</span>
+                <div className="strategy-ci-bars">
+                  <div className="strategy-ci-line">
+                    <span className="strategy-ci-tag truthful-tag">Truthful</span>
+                    <div className="bar-track">
+                      <div
+                        className="bar-fill gsp-fill"
+                        style={{ width: `${getPercent(t.mean, maxMean)}%` }}
+                      />
+                    </div>
+                    <span className="strategy-ci-value">
+                      {formatNumber(t.mean)}
+                      <small> [{formatNumber(t.lower)}–{formatNumber(t.upper)}]</small>
+                    </span>
+                  </div>
+                  <div className="strategy-ci-line">
+                    <span className="strategy-ci-tag shaded-tag">Shaded</span>
+                    <div className="bar-track">
+                      <div
+                        className="bar-fill accent-fill"
+                        style={{ width: `${getPercent(s.mean, maxMean)}%` }}
+                      />
+                    </div>
+                    <span className="strategy-ci-value">
+                      {formatNumber(s.mean)}
+                      <small> [{formatNumber(s.lower)}–{formatNumber(s.upper)}]</small>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function MetricRow({ label, gsp, vcg, difference }) {
@@ -471,14 +702,17 @@ function App() {
   const [apiStatus, setApiStatus] = useState('checking')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [animStep, setAnimStep] = useState(0)
+  const [animPlaying, setAnimPlaying] = useState(false)
 
   const activeMode = modeConfig[resultMode]
   const activeCategory = modeCategories.find((category) => category.id === selectedCategory)
-  const needsStrategyControls = ['nash', 'best-response', 'rl', 'heatmap'].includes(resultMode)
+  const needsStrategyControls = ['nash', 'best-response', 'rl', 'heatmap', 'multi-agent'].includes(resultMode)
+  const needsBidderSelector = ['nash', 'best-response', 'rl', 'heatmap'].includes(resultMode)
   const needsHeatmapControls = resultMode === 'heatmap'
-  const needsRlControls = resultMode === 'rl'
-  const needsStatControls = resultMode === 'stats'
-  const needsPricingControls = ['compare', 'gsp', 'vcg'].includes(resultMode)
+  const needsRlControls = ['rl', 'multi-agent'].includes(resultMode)
+  const needsStatControls = ['stats', 'strategy-compare'].includes(resultMode)
+  const needsPricingControls = ['compare', 'gsp', 'vcg', 'animate'].includes(resultMode)
 
   useEffect(() => {
     let isMounted = true
@@ -502,6 +736,17 @@ function App() {
       isMounted = false
     }
   }, [])
+
+  useEffect(() => {
+    if (!animPlaying || resultMode !== 'animate' || !result?.allocations) return
+    const maxSteps = result.allocations.length
+    if (animStep >= maxSteps) {
+      setAnimPlaying(false)
+      return
+    }
+    const timer = setTimeout(() => setAnimStep((s) => s + 1), 900)
+    return () => clearTimeout(timer)
+  }, [animPlaying, animStep, result, resultMode])
 
   function updateBidder(index, field, value) {
     setMarket((currentMarket) => ({
@@ -590,6 +835,8 @@ function App() {
     setResultMode('compare')
     setResult(null)
     setError('')
+    setAnimStep(0)
+    setAnimPlaying(false)
   }
 
   function selectCategory(category) {
@@ -785,6 +1032,49 @@ function App() {
         return
       }
 
+      if (mode === 'animate') {
+        const gspResult = await runGspAuction({ ...market, use_quality_scores: true })
+        setResult(gspResult)
+        setAnimStep(0)
+        setAnimPlaying(false)
+        return
+      }
+
+      if (mode === 'multi-agent') {
+        const candidateBids = parseCandidateBids(candidateBidsText)
+
+        if (candidateBids.length === 0) {
+          throw new Error('Enter at least one candidate bid')
+        }
+
+        setResult(
+          await trainMultiAgentRl({
+            bidder_specs: market.bidders,
+            ctrs: market.ctrs,
+            candidate_bids: candidateBids,
+            num_episodes: rlSettings.num_episodes,
+            learning_rate: rlSettings.learning_rate,
+            discount_factor: rlSettings.discount_factor,
+            epsilon: rlSettings.epsilon,
+          }),
+        )
+        return
+      }
+
+      if (mode === 'strategy-compare') {
+        if (market.ctrs.length === 0) {
+          throw new Error('Add at least one slot CTR before running strategy comparison')
+        }
+
+        setResult(
+          await compareStrategies({
+            ...statSettings,
+            ctrs: market.ctrs,
+          }),
+        )
+        return
+      }
+
       if (mode === 'gsp') {
         setResult(
           await runGspAuction({
@@ -904,6 +1194,7 @@ function App() {
                     }}
                   />
                 </label>
+                {needsBidderSelector && (
                 <MarketSelect
                   label="Target bidder"
                   value={selectedBidderId}
@@ -914,6 +1205,7 @@ function App() {
                     setResult(null)
                   }}
                 />
+              )}
               </div>
             </div>
           )}
@@ -1032,6 +1324,16 @@ function App() {
                   disabled={isLoading}
                   onChange={(value) => updateStatSetting('confidence', value)}
                 />
+                {resultMode === 'strategy-compare' && (
+                  <MarketInput
+                    label="Shade factor"
+                    value={statSettings.shade_factor}
+                    step="0.05"
+                    disabled={isLoading}
+                    hint="Fraction of value that shaded bidders submit as bid"
+                    onChange={(value) => updateStatSetting('shade_factor', value)}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -1349,6 +1651,44 @@ function App() {
                   </div>
 
                   <ConfidenceIntervalTable metrics={result.metrics} />
+                </div>
+              ) : resultMode === 'animate' ? (
+                <AuctionAnimationPanel
+                  allocations={result.allocations}
+                  bidders={market.bidders}
+                  step={animStep}
+                  playing={animPlaying}
+                  onPlay={() => setAnimPlaying(true)}
+                  onPause={() => setAnimPlaying(false)}
+                  onStep={() => setAnimStep((s) => Math.min(result.allocations.length, s + 1))}
+                  onBack={() => { setAnimPlaying(false); setAnimStep((s) => Math.max(0, s - 1)) }}
+                />
+              ) : resultMode === 'multi-agent' ? (
+                <div className="rl-result">
+                  <div className="rl-summary">
+                    <span>Multi-agent training</span>
+                    <strong>{result.history.length} episodes</strong>
+                    <small>
+                      {market.bidders.length} agents trained simultaneously on the same auction.
+                    </small>
+                  </div>
+                  <MultiAgentChart
+                    history={result.history}
+                    bidderIds={market.bidders.map((b) => b.id)}
+                  />
+                </div>
+              ) : resultMode === 'strategy-compare' ? (
+                <div className="stats-result">
+                  <div className="stats-summary">
+                    <span>Strategy comparison</span>
+                    <strong>Shade {formatNumber(result.shade_factor)}</strong>
+                    <small>
+                      {formatNumber(result.num_auctions)} auctions,{' '}
+                      {formatNumber(result.confidence * 100)}% CI. Shaded bidders bid{' '}
+                      {formatNumber(result.shade_factor * 100)}% of their value.
+                    </small>
+                  </div>
+                  <StrategyComparisonPanel result={result} />
                 </div>
               ) : (
                 <div className="single-result">
