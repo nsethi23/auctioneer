@@ -7,6 +7,7 @@ from auctioneer.agents.best_response import (
     generate_best_response_curve,
 )
 from auctioneer.agents.nash import check_gsp_nash_equilibrium
+from auctioneer.agents.multi_agent_q_learning import train_multi_agent_q_learning
 from auctioneer.agents.q_learning_evaluation import track_q_learning_convergence
 from auctioneer.auctions.gsp import run_gsp_auction
 from auctioneer.auctions.vcg import run_vcg_auction
@@ -101,6 +102,16 @@ class RLConvergenceRequest(BaseModel):
     epsilon: float = 0.1
 
 
+class MultiAgentRLRequest(BaseModel):
+    bidder_specs: list[BidderInput]
+    ctrs: list[float]
+    candidate_bids: list[float]
+    num_episodes: int
+    learning_rate: float = 0.1
+    discount_factor: float = 0.0
+    epsilon: float = 0.1
+
+
 class StatisticalSimulationRequest(BaseModel):
     num_auctions: int
     num_bidders: int
@@ -188,9 +199,7 @@ def compute_best_response(request: BestResponseRequest):
             detail="bidder_id must match one of the bidders",
         )
 
-    other_bidders = [
-        bidder for bidder in bidders if bidder["id"] != request.bidder_id
-    ]
+    other_bidders = [bidder for bidder in bidders if bidder["id"] != request.bidder_id]
 
     return find_best_response_bid(
         bidder_id=target_bidder["id"],
@@ -215,9 +224,7 @@ def compute_best_response_curve(request: BestResponseCurveRequest):
             detail="bidder_id must match one of the bidders",
         )
 
-    other_bidders = [
-        bidder for bidder in bidders if bidder["id"] != request.bidder_id
-    ]
+    other_bidders = [bidder for bidder in bidders if bidder["id"] != request.bidder_id]
 
     return {
         "bidder_id": request.bidder_id,
@@ -262,3 +269,18 @@ def run_statistical_simulation(request: StatisticalSimulationRequest):
         num_resamples=request.num_resamples,
         confidence=request.confidence,
     )
+
+
+@app.post("/rl/multi-agent")
+def train_multi_agent_rl(request: MultiAgentRLRequest):
+    bidder_specs = [{"id": b.id, "value": b.value} for b in request.bidder_specs]
+    result = train_multi_agent_q_learning(
+        bidder_specs=bidder_specs,
+        ctrs=request.ctrs,
+        candidate_bids=request.candidate_bids,
+        num_episodes=request.num_episodes,
+        learning_rate=request.learning_rate,
+        discount_factor=request.discount_factor,
+        epsilon=request.epsilon,
+    )
+    return {"history": result["history"]}
