@@ -450,6 +450,94 @@ def test_statistical_simulation_accepts_default_bootstrap_settings():
     assert response.json()["num_resamples"] == 1000
 
 
+def test_exp3_convergence_returns_checkpoints_and_history():
+    response = client.post(
+        "/rl/exp3",
+        json={
+            "bidder_id": "A",
+            "value": 10.0,
+            "other_bidders": [
+                {"id": "B", "value": 8.0, "bid": 8.0},
+                {"id": "C", "value": 5.0, "bid": 5.0},
+            ],
+            "ctrs": [0.6, 0.3],
+            "candidate_bids": [5.0, 8.0, 10.0],
+            "num_episodes": 4,
+            "checkpoint_interval": 2,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert "best_response" in body
+    assert "checkpoints" in body
+    assert "history" in body
+    assert len(body["history"]) == 4
+    assert len(body["checkpoints"]) == 2
+
+
+def test_exp3_convergence_checkpoint_has_expected_keys():
+    response = client.post(
+        "/rl/exp3",
+        json={
+            "bidder_id": "A",
+            "value": 10.0,
+            "other_bidders": [{"id": "B", "value": 8.0, "bid": 8.0}],
+            "ctrs": [0.6],
+            "candidate_bids": [5.0, 8.0],
+            "num_episodes": 2,
+            "checkpoint_interval": 2,
+        },
+    )
+
+    assert response.status_code == 200
+
+    checkpoint = response.json()["checkpoints"][0]
+    assert "episode" in checkpoint
+    assert "learned_bid" in checkpoint
+    assert "learned_weight" in checkpoint
+    assert "bid_gap" in checkpoint
+    assert "best_response_bid" in checkpoint
+    assert "best_response_utility" in checkpoint
+    assert "average_recent_reward" in checkpoint
+
+
+def test_exp3_convergence_accepts_custom_gamma():
+    response = client.post(
+        "/rl/exp3",
+        json={
+            "bidder_id": "A",
+            "value": 10.0,
+            "other_bidders": [{"id": "B", "value": 8.0, "bid": 8.0}],
+            "ctrs": [0.6],
+            "candidate_bids": [5.0, 8.0],
+            "num_episodes": 2,
+            "checkpoint_interval": 1,
+            "gamma": 0.3,
+        },
+    )
+
+    assert response.status_code == 200
+
+
+def test_exp3_convergence_rejects_empty_candidate_bids():
+    response = client.post(
+        "/rl/exp3",
+        json={
+            "bidder_id": "A",
+            "value": 10.0,
+            "other_bidders": [],
+            "ctrs": [0.6],
+            "candidate_bids": [],
+            "num_episodes": 2,
+            "checkpoint_interval": 1,
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_statistical_simulation_accepts_lognormal_distribution():
     response = client.post(
         "/simulation/statistical",

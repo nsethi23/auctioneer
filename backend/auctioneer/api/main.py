@@ -7,6 +7,7 @@ from auctioneer.agents.best_response import (
     generate_best_response_curve,
 )
 from auctioneer.agents.nash import check_gsp_nash_equilibrium
+from auctioneer.agents.exp3_evaluation import track_exp3_convergence
 from auctioneer.agents.multi_agent_q_learning import train_multi_agent_q_learning
 from auctioneer.agents.q_learning_evaluation import track_q_learning_convergence
 from auctioneer.auctions.gsp import run_gsp_auction
@@ -100,6 +101,17 @@ class RLConvergenceRequest(BaseModel):
     learning_rate: float = 0.1
     discount_factor: float = 0.0
     epsilon: float = 0.1
+
+
+class EXP3ConvergenceRequest(BaseModel):
+    bidder_id: str
+    value: float
+    other_bidders: list[BidderInput]
+    ctrs: list[float]
+    candidate_bids: list[float]
+    num_episodes: int
+    checkpoint_interval: int
+    gamma: float = 0.1
 
 
 class MultiAgentRLRequest(BaseModel):
@@ -271,6 +283,24 @@ def run_statistical_simulation(request: StatisticalSimulationRequest):
             num_resamples=request.num_resamples,
             confidence=request.confidence,
             distribution=request.distribution,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/rl/exp3")
+def track_exp3_convergence_endpoint(request: EXP3ConvergenceRequest):
+    other_bidders = [bidder_input_to_dict(bidder) for bidder in request.other_bidders]
+    try:
+        return track_exp3_convergence(
+            bidder_id=request.bidder_id,
+            value=request.value,
+            other_bidders=other_bidders,
+            ctrs=request.ctrs,
+            candidate_bids=request.candidate_bids,
+            num_episodes=request.num_episodes,
+            checkpoint_interval=request.checkpoint_interval,
+            gamma=request.gamma,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
