@@ -16,6 +16,9 @@ import {
 import { modeCategories, modeConfig, modeToCategory } from './modeConfig'
 import './App.css'
 
+
+console.log('API base URL:', import.meta.env.VITE_API_BASE_URL);
+
 const sampleMarket = {
   bidders: [
     { id: 'A', value: 10, bid: 10, quality_score: 1 },
