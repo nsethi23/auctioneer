@@ -38,3 +38,8 @@ pnpm-debug.log*
 .DS_Store
 *.swp
 *.swo
+
+# Claude Code and impeccable skill config
+.claude/
+PRODUCT.md
+DESIGN.md
