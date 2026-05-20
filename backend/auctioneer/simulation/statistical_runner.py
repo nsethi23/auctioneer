@@ -14,6 +14,7 @@ def run_repeated_comparisons_with_confidence(
     num_resamples=1000,
     confidence=0.95,
     rng=None,
+    distribution="uniform",
 ):
     if num_auctions <= 0:
         raise ValueError("num_auctions must be positive")
@@ -52,6 +53,7 @@ def run_repeated_comparisons_with_confidence(
             min_value=min_value,
             max_value=max_value,
             rng=rng,
+            distribution=distribution,
         )
 
         comparison = compare_gsp_and_vcg(bidders, ctrs)

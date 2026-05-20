@@ -450,6 +450,143 @@ def test_statistical_simulation_accepts_default_bootstrap_settings():
     assert response.json()["num_resamples"] == 1000
 
 
+def test_statistical_simulation_accepts_lognormal_distribution():
+    response = client.post(
+        "/simulation/statistical",
+        json={
+            "num_auctions": 5,
+            "num_bidders": 3,
+            "ctrs": [0.6, 0.3],
+            "min_value": 1.0,
+            "max_value": 10.0,
+            "num_resamples": 20,
+            "confidence": 0.8,
+            "distribution": "lognormal",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "gsp" in response.json()["metrics"]
+
+
+def test_statistical_simulation_rejects_unknown_distribution():
+    response = client.post(
+        "/simulation/statistical",
+        json={
+            "num_auctions": 5,
+            "num_bidders": 3,
+            "ctrs": [0.6, 0.3],
+            "min_value": 1.0,
+            "max_value": 10.0,
+            "distribution": "power_law",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_multi_agent_rl_returns_per_episode_history():
+    response = client.post(
+        "/rl/multi-agent",
+        json={
+            "bidder_specs": [
+                {"id": "A", "value": 10.0, "bid": 0.0},
+                {"id": "B", "value": 8.0, "bid": 0.0},
+            ],
+            "ctrs": [0.6, 0.3],
+            "candidate_bids": [5.0, 8.0, 10.0],
+            "num_episodes": 5,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert "history" in body
+    assert len(body["history"]) == 5
+
+
+def test_multi_agent_rl_history_entry_has_expected_keys():
+    response = client.post(
+        "/rl/multi-agent",
+        json={
+            "bidder_specs": [
+                {"id": "A", "value": 10.0, "bid": 0.0},
+                {"id": "B", "value": 8.0, "bid": 0.0},
+            ],
+            "ctrs": [0.6],
+            "candidate_bids": [5.0, 8.0],
+            "num_episodes": 2,
+        },
+    )
+
+    assert response.status_code == 200
+
+    entry = response.json()["history"][0]
+    assert entry["episode"] == 0
+    assert "bids" in entry
+    assert "rewards" in entry
+    assert "q_values" in entry
+    assert "revenue" in entry
+    assert "welfare" in entry
+    assert "bidder_surplus" in entry
+
+
+def test_multi_agent_rl_bids_are_keyed_by_bidder_id():
+    response = client.post(
+        "/rl/multi-agent",
+        json={
+            "bidder_specs": [
+                {"id": "A", "value": 10.0, "bid": 0.0},
+                {"id": "B", "value": 8.0, "bid": 0.0},
+            ],
+            "ctrs": [0.6],
+            "candidate_bids": [5.0, 8.0],
+            "num_episodes": 1,
+        },
+    )
+
+    bids = response.json()["history"][0]["bids"]
+    assert "A" in bids
+    assert "B" in bids
+
+
+def test_multi_agent_rl_accepts_learning_hyperparameters():
+    response = client.post(
+        "/rl/multi-agent",
+        json={
+            "bidder_specs": [
+                {"id": "A", "value": 10.0, "bid": 0.0},
+            ],
+            "ctrs": [0.6],
+            "candidate_bids": [5.0, 10.0],
+            "num_episodes": 3,
+            "learning_rate": 0.5,
+            "discount_factor": 0.1,
+            "epsilon": 0.05,
+        },
+    )
+
+    assert response.status_code == 200
+    assert len(response.json()["history"]) == 3
+
+
+def test_multi_agent_rl_rejects_empty_candidate_bids():
+    response = client.post(
+        "/rl/multi-agent",
+        json={
+            "bidder_specs": [
+                {"id": "A", "value": 10.0, "bid": 0.0},
+            ],
+            "ctrs": [0.6],
+            "candidate_bids": [],
+            "num_episodes": 3,
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_statistical_simulation_rejects_missing_required_fields():
     response = client.post(
         "/simulation/statistical",

@@ -120,6 +120,7 @@ class StatisticalSimulationRequest(BaseModel):
     max_value: float
     num_resamples: int = 1000
     confidence: float = 0.95
+    distribution: str = "uniform"
 
 
 def bidder_input_to_dict(bidder):
@@ -260,27 +261,34 @@ def track_rl_convergence(request: RLConvergenceRequest):
 
 @app.post("/simulation/statistical")
 def run_statistical_simulation(request: StatisticalSimulationRequest):
-    return run_repeated_comparisons_with_confidence(
-        num_auctions=request.num_auctions,
-        num_bidders=request.num_bidders,
-        ctrs=request.ctrs,
-        min_value=request.min_value,
-        max_value=request.max_value,
-        num_resamples=request.num_resamples,
-        confidence=request.confidence,
-    )
+    try:
+        return run_repeated_comparisons_with_confidence(
+            num_auctions=request.num_auctions,
+            num_bidders=request.num_bidders,
+            ctrs=request.ctrs,
+            min_value=request.min_value,
+            max_value=request.max_value,
+            num_resamples=request.num_resamples,
+            confidence=request.confidence,
+            distribution=request.distribution,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/rl/multi-agent")
 def train_multi_agent_rl(request: MultiAgentRLRequest):
     bidder_specs = [{"id": b.id, "value": b.value} for b in request.bidder_specs]
-    result = train_multi_agent_q_learning(
-        bidder_specs=bidder_specs,
-        ctrs=request.ctrs,
-        candidate_bids=request.candidate_bids,
-        num_episodes=request.num_episodes,
-        learning_rate=request.learning_rate,
-        discount_factor=request.discount_factor,
-        epsilon=request.epsilon,
-    )
+    try:
+        result = train_multi_agent_q_learning(
+            bidder_specs=bidder_specs,
+            ctrs=request.ctrs,
+            candidate_bids=request.candidate_bids,
+            num_episodes=request.num_episodes,
+            learning_rate=request.learning_rate,
+            discount_factor=request.discount_factor,
+            epsilon=request.epsilon,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"history": result["history"]}

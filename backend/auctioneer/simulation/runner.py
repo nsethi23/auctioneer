@@ -14,6 +14,7 @@ def run_repeated_comparisons(
     rng=None,
     strategy=truthful_bid,
     strategy_kwargs=None,
+    distribution="uniform",
 ):
     if num_auctions <= 0:
         raise ValueError("num_auctions must be positive")
@@ -48,6 +49,7 @@ def run_repeated_comparisons(
             rng,
             strategy,
             strategy_kwargs,
+            distribution=distribution,
         )
         comparison_result = compare_gsp_and_vcg(bidders, ctrs)
 

@@ -205,6 +205,48 @@ def test_generate_bidders_from_profiles_defaults_strategy_name_to_function_name(
     assert bidders[0]["strategy"] == "truthful_bid"
 
 
+def test_generate_bidders_lognormal_produces_positive_values():
+    # Log-normal is only defined for positive inputs; all values must be > 0.
+    bidders = generate_bidders(
+        50, 1.0, 10.0, rng=random.Random(42), distribution="lognormal"
+    )
+
+    for bidder in bidders:
+        assert bidder["value"] > 0
+
+
+def test_generate_bidders_lognormal_is_deterministic_with_seeded_rng():
+    first = generate_bidders(
+        10, 1.0, 10.0, rng=random.Random(42), distribution="lognormal"
+    )
+    second = generate_bidders(
+        10, 1.0, 10.0, rng=random.Random(42), distribution="lognormal"
+    )
+
+    assert first == second
+
+
+def test_generate_bidders_lognormal_median_near_geometric_mean():
+    # With sigma = (ln(max) - ln(min)) / 4, the median of the log-normal equals
+    # exp(mu) = sqrt(min_value * max_value), the geometric mean of the range.
+    import math
+
+    bidders = generate_bidders(
+        500, 1.0, 100.0, rng=random.Random(0), distribution="lognormal"
+    )
+    values = sorted(b["value"] for b in bidders)
+    median = values[len(values) // 2]
+    geometric_mean = math.sqrt(1.0 * 100.0)
+
+    # Median should be within 30% of the geometric mean over 500 samples.
+    assert abs(median - geometric_mean) / geometric_mean < 0.3
+
+
+def test_generate_bidders_rejects_unknown_distribution():
+    with pytest.raises(ValueError, match="unknown distribution"):
+        generate_bidders(3, 1.0, 10.0, rng=random.Random(0), distribution="power_law")
+
+
 def test_generate_bidders_from_profiles_is_deterministic_with_seeded_rng():
     profiles = [
         {

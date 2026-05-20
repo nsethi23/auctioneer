@@ -1,6 +1,23 @@
+import math
 import random
 
 from auctioneer.agents.strategies import truthful_bid
+
+
+def _sample_value(rng, min_value, max_value, distribution):
+    if distribution == "uniform":
+        return rng.uniform(min_value, max_value)
+
+    if distribution == "lognormal":
+        # Parameterize so the distribution is centered at the geometric mean of
+        # [min_value, max_value] and ~95% of draws fall within that interval.
+        mu = (math.log(min_value) + math.log(max_value)) / 2
+        sigma = (math.log(max_value) - math.log(min_value)) / 4
+        return rng.lognormvariate(mu, sigma)
+
+    raise ValueError(
+        f"unknown distribution: {distribution!r}. Use 'uniform' or 'lognormal'."
+    )
 
 
 def generate_bidders(
@@ -10,6 +27,7 @@ def generate_bidders(
     rng=None,
     strategy=truthful_bid,
     strategy_kwargs=None,
+    distribution="uniform",
 ):
     if rng is None:
         rng = random.Random()
@@ -20,8 +38,8 @@ def generate_bidders(
     bidders = []
 
     for i in range(num_bidders):
-        # Sample each advertiser's private value from the configured market range.
-        value = rng.uniform(min_value, max_value)
+        # Sample each advertiser's private value from the chosen distribution.
+        value = _sample_value(rng, min_value, max_value, distribution)
 
         # Convert private value into an actual bid using the selected strategy.
         bidders.append(
