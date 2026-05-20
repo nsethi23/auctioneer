@@ -2,9 +2,9 @@
 
 ## Visual Theme
 
-Auctioneer uses a light, focused workbench theme. The physical scene is a user studying auction behavior on a laptop or desktop in a quiet work setting, switching between code, API docs, and the dashboard. The interface should reduce glare and cognitive load while keeping the simulation results sharp.
+Auctioneer uses a dark, focused workbench theme. The physical scene is a user studying auction behavior on a laptop or desktop in a quiet evening work setting, switching between code, API docs, and the dashboard. The interface should reduce glare and cognitive load while keeping the simulation results sharp.
 
-The default color strategy is restrained: cool-tinted neutrals, one blue accent for primary action and navigation, green for favorable deltas, and red for unfavorable deltas or errors. Color should annotate meaning, not decorate the page.
+The default color strategy is restrained: dark cool-tinted graphite neutrals, one orange accent reserved for primary actions only, blue for GSP series and heatmap intensity, teal for VCG series, cyan for benchmark/reference series, violet for learned/RL series, green for favorable states, and red for unfavorable states or errors. Color should annotate meaning, not decorate the page.
 
 ## Color
 
@@ -12,30 +12,49 @@ Use OKLCH values and keep neutrals lightly tinted toward blue.
 
 ```css
 :root {
-  --surface-base: oklch(98% 0.006 250);
-  --surface-panel: oklch(99% 0.004 250);
-  --surface-muted: oklch(96% 0.008 250);
-  --surface-sidebar: oklch(97% 0.008 250);
-  --border-subtle: oklch(86% 0.014 250);
-  --border-muted: oklch(89% 0.012 250);
-  --text-strong: oklch(18% 0.02 250);
-  --text-base: oklch(21% 0.02 250);
-  --text-muted: oklch(48% 0.035 250);
-  --accent: oklch(42% 0.13 245);
-  --accent-hover: oklch(36% 0.13 245);
-  --accent-soft: oklch(92% 0.045 245);
-  --success: oklch(35% 0.12 155);
-  --success-soft: oklch(95% 0.035 160);
-  --danger: oklch(42% 0.13 25);
-  --danger-soft: oklch(96% 0.025 25);
+  --surface-base: oklch(16% 0.012 250);
+  --surface-floor: oklch(12% 0.012 250);
+  --surface-inset: oklch(15% 0.012 250);
+  --surface-panel: oklch(20% 0.014 250);
+  --surface-muted: oklch(25% 0.016 250);
+  --surface-sidebar: oklch(18% 0.014 250);
+  --surface-raised: oklch(23% 0.016 250);
+  --border-subtle: oklch(32% 0.018 250);
+  --border-muted: oklch(28% 0.016 250);
+  --text-strong: oklch(93% 0.012 70);
+  --text-base: oklch(84% 0.014 70);
+  --text-muted: oklch(68% 0.018 70);
+  --accent: oklch(72% 0.17 55);
+  --accent-hover: oklch(78% 0.18 55);
+  --accent-soft: oklch(27% 0.07 55);
+  --accent-border: oklch(56% 0.13 55);
+  --accent-contrast: oklch(16% 0.02 55);
+  --accent-on: oklch(18% 0.02 55);
+  --data-gsp: oklch(72% 0.12 220);
+  --data-gsp-soft: oklch(26% 0.05 220);
+  --data-gsp-start: oklch(46% 0.08 220);
+  --data-vcg: oklch(73% 0.12 158);
+  --data-vcg-soft: oklch(26% 0.05 158);
+  --data-benchmark: oklch(74% 0.1 190);
+  --data-benchmark-soft: oklch(26% 0.05 190);
+  --data-benchmark-border: oklch(48% 0.07 190);
+  --data-learning: oklch(73% 0.11 285);
+  --data-learning-soft: oklch(25% 0.055 285);
+  --data-learning-border: oklch(47% 0.08 285);
+  --success: oklch(73% 0.13 150);
+  --success-soft: oklch(26% 0.055 150);
+  --success-border: oklch(50% 0.09 150);
+  --danger: oklch(70% 0.14 25);
+  --danger-soft: oklch(25% 0.06 25);
+  --danger-border: oklch(50% 0.09 25);
 }
 ```
 
 ## Typography
 
-Use `Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`. Keep display text compact because this is a tool, not a marketing page.
+Auctioneer uses the IBM Plex family in three roles. Use `"IBM Plex Serif", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif` for headings and large summary values so the product keeps an academic, research-workbench tone. Use `"IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif` for body copy, controls, labels, and dashboard chrome. Use `"IBM Plex Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace` for tabular values, bids, CTRs, payments, utilities, confidence intervals, Q-values, and heatmap cells.
 
-Use tabular numerals for revenue, welfare, surplus, CTR, payment, utility, Q-values, bid gaps, confidence intervals, and convergence values. Prefer precise labels over explanatory paragraphs inside the interface.
+Use tabular numerals for revenue, welfare, surplus, CTR, payment, utility, Q-values, bid gaps, confidence intervals, and convergence values. Prefer precise labels over explanatory paragraphs inside the interface. Dense numeric regions should prioritize scan speed over editorial personality.
 
 Recommended hierarchy:
 

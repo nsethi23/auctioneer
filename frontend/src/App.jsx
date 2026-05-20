@@ -11,6 +11,7 @@ import {
   runVcgAuction,
   trackRlConvergence,
 } from './api'
+import { modeCategories, modeConfig, modeToCategory } from './modeConfig'
 import './App.css'
 
 const sampleMarket = {
@@ -75,10 +76,31 @@ function getPercent(value, maxValue) {
   return Math.max(0, Math.min(100, (value / maxValue) * 100))
 }
 
+const glossary = {
+  CTR: 'Click-through rate: probability a user clicks an ad in this slot position',
+  Utility: "Bidder's value minus their payment for winning a slot (value − payment)",
+  Welfare: "Sum of all winning bidders' private values, measuring allocative efficiency",
+  'Bidder surplus': 'Total utility earned across all winning bidders',
+  'Price of anarchy': 'Ratio of optimal welfare to strategic Nash equilibrium welfare. Closer to 1 means less efficiency loss from strategic bidding.',
+  'Welfare loss': 'Optimal welfare minus strategic welfare: the cost of strategic bidding',
+  'Optimal welfare': 'Welfare achieved by the socially optimal allocation, ignoring bids',
+  'Strategic GSP welfare': 'Welfare achieved when all bidders play Nash equilibrium strategies in GSP',
+  'Q-value': "Learned expected reward for the agent's current bid, stored in the Q-table",
+  'Bid gap': 'Difference between the learned bid and the analytical best-response bid',
+  'Utility gap': 'Difference between the learned Q-value and the best-response utility benchmark',
+  'Recent reward': 'Average reward earned over the most recent training episodes',
+  'Reserve price': 'Minimum bid required for a bidder to be allocated a slot',
+}
+
+function GlossaryTerm({ term }) {
+  const definition = glossary[term]
+  return definition ? <abbr title={definition}>{term}</abbr> : <>{term}</>
+}
+
 function MetricRow({ label, gsp, vcg, difference }) {
   return (
     <div className="metric-row">
-      <span>{label}</span>
+      <span><GlossaryTerm term={label} /></span>
       <strong>{formatNumber(gsp)}</strong>
       <strong>{formatNumber(vcg)}</strong>
       <strong className={difference >= 0 ? 'positive' : 'negative'}>
@@ -96,7 +118,7 @@ function MetricBars({ rows }) {
     <div className="metric-bars">
       {rows.map((row) => (
         <div className="metric-bar-row" key={row.label}>
-          <span>{row.label}</span>
+          <span><GlossaryTerm term={row.label} /></span>
           <div className="bar-pair">
             <div className="bar-line">
               <span>GSP</span>
@@ -128,7 +150,7 @@ function MetricBars({ rows }) {
 function SingleMetricRow({ label, value }) {
   return (
     <div className="single-metric-row">
-      <span>{label}</span>
+      <span><GlossaryTerm term={label} /></span>
       <strong>{formatNumber(value)}</strong>
     </div>
   )
@@ -169,26 +191,28 @@ function ConfidenceIntervalTable({ metrics }) {
   )
 }
 
-function MarketInput({ label, value, step = '1', onChange }) {
+function MarketInput({ label, value, step = '1', onChange, disabled, hint }) {
   return (
     <label className="market-input">
-      <span>{label}</span>
+      <span><GlossaryTerm term={label} /></span>
       <input
         type="number"
         min="0"
         step={step}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
+        disabled={disabled}
+        title={hint}
       />
     </label>
   )
 }
 
-function MarketSelect({ label, value, options, onChange }) {
+function MarketSelect({ label, value, options, onChange, disabled }) {
   return (
     <label className="market-input">
       <span>{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)}>
+      <select value={value} onChange={(event) => onChange(event.target.value)} disabled={disabled}>
         {options.map((option) => (
           <option key={option} value={option}>
             {option}
@@ -205,9 +229,9 @@ function AllocationTable({ allocations }) {
       <div className="table-head">
         <span>Bidder</span>
         <span>Slot</span>
-        <span>CTR</span>
+        <span><GlossaryTerm term="CTR" /></span>
         <span>Payment</span>
-        <span>Utility</span>
+        <span><GlossaryTerm term="Utility" /></span>
       </div>
       {allocations.map((allocation) => (
         <div className="table-row" key={`${allocation.bidder_id}-${allocation.slot}`}>
@@ -308,6 +332,11 @@ function RlConvergenceCurve({ checkpoints }) {
     .map((checkpoint) => pointFor(checkpoint, checkpoint.best_response_utility))
     .join(' ')
 
+  const yTicks = [0, 0.5, 1].map((t) => ({
+    value: minValue + t * valueRange,
+    y: height - padding - t * (height - padding * 2),
+  }))
+
   return (
     <div className="rl-chart">
       <div className="chart-legend">
@@ -317,6 +346,26 @@ function RlConvergenceCurve({ checkpoints }) {
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="RL convergence curve">
         <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} />
         <line x1={padding} y1={padding} x2={padding} y2={height - padding} />
+        {yTicks.map((tick) => (
+          <g key={tick.value}>
+            <line
+              x1={padding - 4}
+              y1={tick.y}
+              x2={padding}
+              y2={tick.y}
+              className="chart-tick"
+            />
+            <text
+              x={padding - 6}
+              y={tick.y}
+              className="chart-axis-label"
+              textAnchor="end"
+              dominantBaseline="middle"
+            >
+              {formatNumber(tick.value)}
+            </text>
+          </g>
+        ))}
         <polyline className="benchmark-line" points={benchmarkPoints} />
         <polyline className="learned-line" points={learnedPoints} />
         {checkpoints.map((checkpoint) => (
@@ -360,13 +409,16 @@ function BestResponseHeatmap({ curve, candidateBids }) {
               const cell = entry.results.find((candidate) => candidate.bid === bid)
               const utility = cell?.utility ?? 0
               const intensity = (utility - minUtility) / utilityRange
-              const lightness = 96 - intensity * 42
+              const lightness = 28 + intensity * 42
 
               return (
                 <div
                   className={entry.best_bid === bid ? 'heatmap-cell best-cell' : 'heatmap-cell'}
                   key={`${entry.value}-${bid}`}
-                  style={{ background: `oklch(${lightness}% 0.12 245)` }}
+                  style={{
+                    background: `oklch(${lightness}% 0.13 220)`,
+                    color: lightness > 54 ? 'var(--surface-base)' : 'var(--text-strong)',
+                  }}
                   title={`value ${formatNumber(entry.value)}, bid ${formatNumber(bid)}, utility ${formatNumber(utility)}`}
                 >
                   {formatNumber(utility)}
@@ -377,24 +429,33 @@ function BestResponseHeatmap({ curve, candidateBids }) {
         ))}
       </div>
       <div className="heatmap-note">
-        Darker cells have higher utility. Outlined cells are best-response bids for that value.
+        Lighter cells have higher utility. Outlined cells are best-response bids for that value.
       </div>
     </div>
   )
 }
 
-function parseCandidateBids(candidateBidsText) {
-  return candidateBidsText
+function parseNumberList(text, label) {
+  const tokens = text
     .split(',')
-    .map((bid) => Number(bid.trim()))
-    .filter((bid) => Number.isFinite(bid))
+    .map((token) => token.trim())
+    .filter(Boolean)
+
+  const invalidToken = tokens.find((token) => !Number.isFinite(Number(token)))
+
+  if (invalidToken) {
+    throw new Error(`${label} contains an invalid number: ${invalidToken}`)
+  }
+
+  return tokens.map(Number)
+}
+
+function parseCandidateBids(candidateBidsText) {
+  return parseNumberList(candidateBidsText, 'Bid grid')
 }
 
 function parseNumberGrid(text) {
-  return text
-    .split(',')
-    .map((value) => Number(value.trim()))
-    .filter((value) => Number.isFinite(value))
+  return parseNumberList(text, 'Value grid')
 }
 
 function App() {
@@ -406,9 +467,18 @@ function App() {
   const [statSettings, setStatSettings] = useState(defaultStatSettings)
   const [result, setResult] = useState(null)
   const [resultMode, setResultMode] = useState('compare')
+  const [selectedCategory, setSelectedCategory] = useState('auction')
   const [apiStatus, setApiStatus] = useState('checking')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const activeMode = modeConfig[resultMode]
+  const activeCategory = modeCategories.find((category) => category.id === selectedCategory)
+  const needsStrategyControls = ['nash', 'best-response', 'rl', 'heatmap'].includes(resultMode)
+  const needsHeatmapControls = resultMode === 'heatmap'
+  const needsRlControls = resultMode === 'rl'
+  const needsStatControls = resultMode === 'stats'
+  const needsPricingControls = ['compare', 'gsp', 'vcg'].includes(resultMode)
 
   useEffect(() => {
     let isMounted = true
@@ -516,6 +586,22 @@ function App() {
     setSelectedBidderId(sampleMarket.bidders[0].id)
     setRlSettings(defaultRlSettings)
     setStatSettings(defaultStatSettings)
+    setSelectedCategory('auction')
+    setResultMode('compare')
+    setResult(null)
+    setError('')
+  }
+
+  function selectCategory(category) {
+    setSelectedCategory(category.id)
+    setResultMode(category.modes[0])
+    setResult(null)
+    setError('')
+  }
+
+  function selectMode(mode) {
+    setResultMode(mode)
+    setSelectedCategory(modeToCategory[mode])
     setResult(null)
     setError('')
   }
@@ -748,241 +834,229 @@ function App() {
               <h2>{market.bidders.length} bidders, {market.ctrs.length} slots</h2>
             </div>
             <div className="button-group">
-              <button type="button" className="secondary-button" onClick={resetMarket}>
+              <button type="button" className="secondary-button" onClick={resetMarket} disabled={isLoading}>
                 Reset
               </button>
-              <button type="button" onClick={() => runExperiment('compare')} disabled={isLoading}>
-                {isLoading ? 'Running...' : 'Run comparison'}
+              <button type="button" onClick={() => runExperiment(resultMode)} disabled={isLoading}>
+                {isLoading ? 'Running...' : activeMode.action}
               </button>
             </div>
           </div>
 
-          <div className="input-section">
-            <div className="section-label">
-              <span>Mechanism</span>
-              <small>Choose what to run</small>
-            </div>
-            <div className="mechanism-controls">
-              <button
-                type="button"
-                className={resultMode === 'compare' ? 'mode-button active' : 'mode-button'}
-                onClick={() => runExperiment('compare')}
-                disabled={isLoading}
-              >
-                GSP vs VCG
-              </button>
-              <button
-                type="button"
-                className={resultMode === 'gsp' ? 'mode-button active' : 'mode-button'}
-                onClick={() => runExperiment('gsp')}
-                disabled={isLoading}
-              >
-                GSP only
-              </button>
-              <button
-                type="button"
-                className={resultMode === 'vcg' ? 'mode-button active' : 'mode-button'}
-                onClick={() => runExperiment('vcg')}
-                disabled={isLoading}
-              >
-                VCG only
-              </button>
-              <button
-                type="button"
-                className={resultMode === 'poa' ? 'mode-button active' : 'mode-button'}
-                onClick={() => runExperiment('poa')}
-                disabled={isLoading}
-              >
-                Efficiency loss
-              </button>
-              <button
-                type="button"
-                className={resultMode === 'nash' ? 'mode-button active' : 'mode-button'}
-                onClick={() => runExperiment('nash')}
-                disabled={isLoading}
-              >
-                Nash check
-              </button>
-              <button
-                type="button"
-                className={resultMode === 'best-response' ? 'mode-button active' : 'mode-button'}
-                onClick={() => runExperiment('best-response')}
-                disabled={isLoading}
-              >
-                Best response
-              </button>
-              <button
-                type="button"
-                className={resultMode === 'rl' ? 'mode-button active' : 'mode-button'}
-                onClick={() => runExperiment('rl')}
-                disabled={isLoading}
-              >
-                RL convergence
-              </button>
-              <button
-                type="button"
-                className={resultMode === 'heatmap' ? 'mode-button active' : 'mode-button'}
-                onClick={() => runExperiment('heatmap')}
-                disabled={isLoading}
-              >
-                Heatmap
-              </button>
-              <button
-                type="button"
-                className={resultMode === 'stats' ? 'mode-button active' : 'mode-button'}
-                onClick={() => runExperiment('stats')}
-                disabled={isLoading}
-              >
-                Statistics
-              </button>
-            </div>
-            <p className="mode-note">
-              Statistics runs many synthetic auctions and reports bootstrap confidence intervals.
-            </p>
-          </div>
+          {error && <p className="error-message">{error}</p>}
 
           <div className="input-section">
             <div className="section-label">
-              <span>Strategy search</span>
-              <small>Candidate bid grid and target bidder</small>
+              <span>Experiment type</span>
+              <small>Choose a workflow</small>
             </div>
-            <div className="strategy-search">
+            <div className="mode-selector">
+              <div className="category-controls" aria-label="Experiment categories">
+                {modeCategories.map((category) => (
+                  <button
+                    type="button"
+                    className={
+                      selectedCategory === category.id ? 'category-button active' : 'category-button'
+                    }
+                    key={category.id}
+                    onClick={() => selectCategory(category)}
+                    disabled={isLoading}
+                    aria-pressed={selectedCategory === category.id}
+                  >
+                    {category.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mechanism-controls" aria-label="Experiment modes">
+                {activeCategory.modes.map((mode) => (
+                  <button
+                    type="button"
+                    className={resultMode === mode ? 'mode-button active' : 'mode-button'}
+                    key={mode}
+                    onClick={() => selectMode(mode)}
+                    disabled={isLoading}
+                    aria-pressed={resultMode === mode}
+                  >
+                    {modeConfig[mode].label}
+                  </button>
+                ))}
+              </div>
+              <p className="mode-note">{activeMode.note}</p>
+            </div>
+          </div>
+
+          {needsStrategyControls && (
+            <div className="input-section">
+              <div className="section-label">
+                <span>Strategy search</span>
+                <small>Candidate bid grid and target bidder</small>
+              </div>
+              <div className="strategy-search">
+                <label className="market-input">
+                  <span>Bid grid</span>
+                  <input
+                    type="text"
+                    value={candidateBidsText}
+                    disabled={isLoading}
+                    onChange={(event) => {
+                      setCandidateBidsText(event.target.value)
+                      setResult(null)
+                    }}
+                  />
+                </label>
+                <MarketSelect
+                  label="Target bidder"
+                  value={selectedBidderId}
+                  options={market.bidders.map((bidder) => bidder.id)}
+                  disabled={isLoading}
+                  onChange={(value) => {
+                    setSelectedBidderId(value)
+                    setResult(null)
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {needsHeatmapControls && (
+            <div className="input-section">
+              <div className="section-label">
+                <span>Heatmap values</span>
+                <small>Private value grid for the selected bidder</small>
+              </div>
               <label className="market-input">
-                <span>Bid grid</span>
+                <span>Value grid</span>
                 <input
                   type="text"
-                  value={candidateBidsText}
+                  value={valueGridText}
+                  disabled={isLoading}
                   onChange={(event) => {
-                    setCandidateBidsText(event.target.value)
+                    setValueGridText(event.target.value)
                     setResult(null)
                   }}
                 />
               </label>
-              <MarketSelect
-                label="Target bidder"
-                value={selectedBidderId}
-                options={market.bidders.map((bidder) => bidder.id)}
+            </div>
+          )}
+
+          {needsRlControls && (
+            <div className="input-section">
+              <div className="section-label">
+                <span>RL training</span>
+                <small>Episode count and learning parameters</small>
+              </div>
+              <div className="rl-settings">
+                <MarketInput
+                  label="Episodes"
+                  value={rlSettings.num_episodes}
+                  disabled={isLoading}
+                  hint="Typical range: 50–500"
+                  onChange={(value) => updateRlSetting('num_episodes', value)}
+                />
+                <MarketInput
+                  label="Checkpoint interval"
+                  value={rlSettings.checkpoint_interval}
+                  disabled={isLoading}
+                  hint="Must be less than episode count"
+                  onChange={(value) => updateRlSetting('checkpoint_interval', value)}
+                />
+                <MarketInput
+                  label="Learning rate"
+                  value={rlSettings.learning_rate}
+                  step="0.05"
+                  disabled={isLoading}
+                  hint="Typical range: 0.01–0.5"
+                  onChange={(value) => updateRlSetting('learning_rate', value)}
+                />
+                <MarketInput
+                  label="Epsilon"
+                  value={rlSettings.epsilon}
+                  step="0.05"
+                  disabled={isLoading}
+                  hint="Exploration rate: 0.01–0.5"
+                  onChange={(value) => updateRlSetting('epsilon', value)}
+                />
+                <MarketInput
+                  label="Discount"
+                  value={rlSettings.discount_factor}
+                  step="0.05"
+                  disabled={isLoading}
+                  hint="Future reward weight: 0–1"
+                  onChange={(value) => updateRlSetting('discount_factor', value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {needsStatControls && (
+            <div className="input-section">
+              <div className="section-label">
+                <span>Statistical simulation</span>
+                <small>Repeated synthetic auction settings</small>
+              </div>
+              <div className="stat-settings">
+                <MarketInput
+                  label="Auctions"
+                  value={statSettings.num_auctions}
+                  disabled={isLoading}
+                  onChange={(value) => updateStatSetting('num_auctions', value)}
+                />
+                <MarketInput
+                  label="Bidders"
+                  value={statSettings.num_bidders}
+                  disabled={isLoading}
+                  onChange={(value) => updateStatSetting('num_bidders', value)}
+                />
+                <MarketInput
+                  label="Min value"
+                  value={statSettings.min_value}
+                  disabled={isLoading}
+                  onChange={(value) => updateStatSetting('min_value', value)}
+                />
+                <MarketInput
+                  label="Max value"
+                  value={statSettings.max_value}
+                  disabled={isLoading}
+                  onChange={(value) => updateStatSetting('max_value', value)}
+                />
+                <MarketInput
+                  label="Resamples"
+                  value={statSettings.num_resamples}
+                  disabled={isLoading}
+                  onChange={(value) => updateStatSetting('num_resamples', value)}
+                />
+                <MarketInput
+                  label="Confidence"
+                  value={statSettings.confidence}
+                  step="0.01"
+                  disabled={isLoading}
+                  onChange={(value) => updateStatSetting('confidence', value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {needsPricingControls && (
+            <div className="input-section">
+              <div className="section-label">
+                <span>Pricing constraint</span>
+                <small>Minimum bid for allocation</small>
+              </div>
+              <MarketInput
+                label="Reserve price"
+                value={market.reserve_price}
+                step="0.5"
+                disabled={isLoading}
                 onChange={(value) => {
-                  setSelectedBidderId(value)
+                  setMarket((currentMarket) => ({
+                    ...currentMarket,
+                    reserve_price: value,
+                  }))
                   setResult(null)
                 }}
               />
             </div>
-          </div>
-
-          <div className="input-section">
-            <div className="section-label">
-              <span>Heatmap values</span>
-              <small>Private value grid for the selected bidder</small>
-            </div>
-            <label className="market-input">
-              <span>Value grid</span>
-              <input
-                type="text"
-                value={valueGridText}
-                onChange={(event) => {
-                  setValueGridText(event.target.value)
-                  setResult(null)
-                }}
-              />
-            </label>
-          </div>
-
-          <div className="input-section">
-            <div className="section-label">
-              <span>RL training</span>
-              <small>Episode count and learning parameters</small>
-            </div>
-            <div className="rl-settings">
-              <MarketInput
-                label="Episodes"
-                value={rlSettings.num_episodes}
-                onChange={(value) => updateRlSetting('num_episodes', value)}
-              />
-              <MarketInput
-                label="Checkpoint"
-                value={rlSettings.checkpoint_interval}
-                onChange={(value) => updateRlSetting('checkpoint_interval', value)}
-              />
-              <MarketInput
-                label="Learn rate"
-                value={rlSettings.learning_rate}
-                step="0.05"
-                onChange={(value) => updateRlSetting('learning_rate', value)}
-              />
-              <MarketInput
-                label="Epsilon"
-                value={rlSettings.epsilon}
-                step="0.05"
-                onChange={(value) => updateRlSetting('epsilon', value)}
-              />
-              <MarketInput
-                label="Discount"
-                value={rlSettings.discount_factor}
-                step="0.05"
-                onChange={(value) => updateRlSetting('discount_factor', value)}
-              />
-            </div>
-          </div>
-
-          <div className="input-section">
-            <div className="section-label">
-              <span>Statistical simulation</span>
-              <small>Repeated synthetic auction settings</small>
-            </div>
-            <div className="stat-settings">
-              <MarketInput
-                label="Auctions"
-                value={statSettings.num_auctions}
-                onChange={(value) => updateStatSetting('num_auctions', value)}
-              />
-              <MarketInput
-                label="Bidders"
-                value={statSettings.num_bidders}
-                onChange={(value) => updateStatSetting('num_bidders', value)}
-              />
-              <MarketInput
-                label="Min value"
-                value={statSettings.min_value}
-                onChange={(value) => updateStatSetting('min_value', value)}
-              />
-              <MarketInput
-                label="Max value"
-                value={statSettings.max_value}
-                onChange={(value) => updateStatSetting('max_value', value)}
-              />
-              <MarketInput
-                label="Resamples"
-                value={statSettings.num_resamples}
-                onChange={(value) => updateStatSetting('num_resamples', value)}
-              />
-              <MarketInput
-                label="Confidence"
-                value={statSettings.confidence}
-                step="0.01"
-                onChange={(value) => updateStatSetting('confidence', value)}
-              />
-            </div>
-          </div>
-
-          <div className="input-section">
-            <div className="section-label">
-              <span>Pricing constraint</span>
-              <small>Minimum bid for allocation</small>
-            </div>
-            <MarketInput
-              label="Reserve price"
-              value={market.reserve_price}
-              step="0.5"
-              onChange={(value) => {
-                setMarket((currentMarket) => ({
-                  ...currentMarket,
-                  reserve_price: value,
-                }))
-                setResult(null)
-              }}
-            />
-          </div>
+          )}
 
           <div className="input-section">
             <div className="section-label">
@@ -996,13 +1070,14 @@ function App() {
                     label={`Slot ${index + 1}`}
                     value={ctr}
                     step="0.05"
+                    disabled={isLoading}
                     onChange={(value) => updateCtr(index, value)}
                   />
                   <button
                     type="button"
                     className="icon-button"
                     onClick={() => removeSlot(index)}
-                    disabled={market.ctrs.length <= 1}
+                    disabled={isLoading || market.ctrs.length <= 1}
                     aria-label={`Remove slot ${index + 1}`}
                   >
                     −
@@ -1010,7 +1085,7 @@ function App() {
                 </div>
               ))}
             </div>
-            <button type="button" className="secondary-button full-width-button" onClick={addSlot}>
+            <button type="button" className="secondary-button full-width-button" onClick={addSlot} disabled={isLoading}>
               Add slot
             </button>
           </div>
@@ -1027,24 +1102,27 @@ function App() {
                   <MarketInput
                     label="Value"
                     value={bidder.value}
+                    disabled={isLoading}
                     onChange={(value) => updateBidder(index, 'value', value)}
                   />
                   <MarketInput
                     label="Bid"
                     value={bidder.bid}
+                    disabled={isLoading}
                     onChange={(value) => updateBidder(index, 'bid', value)}
                   />
                   <MarketInput
                     label="Quality"
                     value={bidder.quality_score}
                     step="0.1"
+                    disabled={isLoading}
                     onChange={(value) => updateBidder(index, 'quality_score', value)}
                   />
                   <button
                     type="button"
                     className="icon-button"
                     onClick={() => removeBidder(index)}
-                    disabled={market.bidders.length <= 1}
+                    disabled={isLoading || market.bidders.length <= 1}
                     aria-label={`Remove bidder ${bidder.id}`}
                   >
                     −
@@ -1052,69 +1130,30 @@ function App() {
                 </div>
               ))}
             </div>
-            <button type="button" className="secondary-button full-width-button" onClick={addBidder}>
+            <button type="button" className="secondary-button full-width-button" onClick={addBidder} disabled={isLoading}>
               Add bidder
             </button>
           </div>
 
-          <div className="market-summary">
-            {market.bidders.map((bidder) => (
-              <div className="bidder" key={bidder.id}>
-                <strong>{bidder.id}</strong>
-                <span>value {formatNumber(bidder.value)}</span>
-                <span>bid {formatNumber(bidder.bid)}</span>
-                <span>quality {formatNumber(bidder.quality_score)}</span>
-              </div>
-            ))}
-          </div>
-
-          {error && <p className="error-message">{error}</p>}
         </aside>
 
         <section className="results-panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">
-                {resultMode === 'compare'
-                  ? 'GSP vs VCG'
-                  : resultMode === 'poa'
-                    ? 'Efficiency'
-                    : resultMode === 'nash'
-                      ? 'Nash'
-                      : resultMode === 'best-response'
-                        ? 'Best response'
-                        : resultMode === 'rl'
-                          ? 'RL'
-                          : resultMode === 'heatmap'
-                            ? 'Heatmap'
-                            : resultMode === 'stats'
-                              ? 'Statistics'
-                              : resultMode.toUpperCase()}
-              </p>
-              <h2>
-                {resultMode === 'compare'
-                  ? 'Mechanism comparison'
-                  : resultMode === 'poa'
-                    ? 'Price of anarchy'
-                    : resultMode === 'nash'
-                      ? 'Equilibrium check'
-                      : resultMode === 'best-response'
-                        ? 'Bid search'
-                        : resultMode === 'rl'
-                          ? 'Convergence'
-                          : resultMode === 'heatmap'
-                            ? 'Best-response heatmap'
-                            : resultMode === 'stats'
-                              ? 'Bootstrap intervals'
-                              : 'Auction result'}
-              </h2>
+              <p className="eyebrow">{activeMode.eyebrow}</p>
+              <h2>{activeMode.title}</h2>
             </div>
-            <span className={result ? 'status ready' : 'status'}>
-              {result ? 'Result ready' : 'Waiting'}
+            <span className={isLoading ? 'status' : result ? 'status ready' : 'status'}>
+              {isLoading ? 'Running' : result ? 'Result ready' : 'Waiting'}
             </span>
           </div>
 
-          {result ? (
+          {isLoading ? (
+            <div className="loading-state">
+              <strong>Computing</strong>
+              <span>{activeMode.action}</span>
+            </div>
+          ) : result ? (
             <>
               {resultMode === 'compare' ? (
                 <>
@@ -1265,10 +1304,10 @@ function App() {
                     <div className="checkpoint-row table-head">
                       <span>Episode</span>
                       <span>Learned bid</span>
-                      <span>Q-value</span>
-                      <span>Bid gap</span>
-                      <span>Utility gap</span>
-                      <span>Recent reward</span>
+                      <span><GlossaryTerm term="Q-value" /></span>
+                      <span><GlossaryTerm term="Bid gap" /></span>
+                      <span><GlossaryTerm term="Utility gap" /></span>
+                      <span><GlossaryTerm term="Recent reward" /></span>
                     </div>
                     {checkpointRows.map((checkpoint) => (
                       <div className="checkpoint-row" key={checkpoint.episode}>
@@ -1335,8 +1374,10 @@ function App() {
             </>
           ) : (
             <div className="empty-state">
-              <strong>No comparison run yet</strong>
-              <span>Start the backend, then run the sample market.</span>
+              <strong>{activeMode.emptyTitle}</strong>
+              <span>
+                {apiStatus === 'offline' ? 'Start the backend, then try again.' : activeMode.emptyText}
+              </span>
             </div>
           )}
         </section>

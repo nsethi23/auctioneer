@@ -1,0 +1,110 @@
+export const modeCategories = [
+  {
+    id: 'auction',
+    label: 'Auction',
+    modes: ['compare', 'gsp', 'vcg', 'poa'],
+  },
+  {
+    id: 'strategy',
+    label: 'Strategy',
+    modes: ['nash', 'best-response', 'heatmap'],
+  },
+  {
+    id: 'learning',
+    label: 'Learning',
+    modes: ['rl'],
+  },
+  {
+    id: 'statistics',
+    label: 'Statistics',
+    modes: ['stats'],
+  },
+]
+
+export const modeConfig = {
+  compare: {
+    label: 'GSP vs VCG',
+    action: 'Run GSP vs VCG',
+    eyebrow: 'GSP vs VCG',
+    title: 'Mechanism comparison',
+    note: 'Compare allocation, payments, revenue, welfare, and surplus for the same market.',
+    emptyTitle: 'No mechanism comparison yet',
+    emptyText: 'Run GSP vs VCG to inspect the payment and allocation differences.',
+  },
+  gsp: {
+    label: 'GSP only',
+    action: 'Run GSP',
+    eyebrow: 'GSP',
+    title: 'Auction result',
+    note: 'Run the generalized second-price auction with reserve and quality-score settings.',
+    emptyTitle: 'No GSP auction yet',
+    emptyText: 'Run GSP to inspect slot allocation, payments, and bidder utility.',
+  },
+  vcg: {
+    label: 'VCG only',
+    action: 'Run VCG',
+    eyebrow: 'VCG',
+    title: 'Auction result',
+    note: 'Run VCG on the current market to compare truthful-payment behavior.',
+    emptyTitle: 'No VCG auction yet',
+    emptyText: 'Run VCG to inspect allocation, payments, and welfare.',
+  },
+  poa: {
+    label: 'Efficiency loss',
+    action: 'Measure efficiency',
+    eyebrow: 'Efficiency',
+    title: 'Price of anarchy',
+    note: 'Compare strategic GSP welfare against the best possible welfare allocation.',
+    emptyTitle: 'No efficiency result yet',
+    emptyText: 'Measure efficiency to quantify welfare loss from strategic bids.',
+  },
+  nash: {
+    label: 'Nash check',
+    action: 'Check equilibrium',
+    eyebrow: 'Nash',
+    title: 'Equilibrium check',
+    note: 'Test whether any bidder can improve utility by switching to another candidate bid.',
+    emptyTitle: 'No Nash check yet',
+    emptyText: 'Check equilibrium to find profitable unilateral deviations.',
+  },
+  'best-response': {
+    label: 'Best response',
+    action: 'Find best response',
+    eyebrow: 'Best response',
+    title: 'Bid search',
+    note: 'Search candidate bids for the selected bidder while holding competitors fixed.',
+    emptyTitle: 'No best-response search yet',
+    emptyText: 'Find a best response to see which bid maximizes the selected bidder utility.',
+  },
+  heatmap: {
+    label: 'Heatmap',
+    action: 'Build heatmap',
+    eyebrow: 'Heatmap',
+    title: 'Best-response heatmap',
+    note: 'Sweep private values and candidate bids to show where utility is maximized.',
+    emptyTitle: 'No heatmap yet',
+    emptyText: 'Build a heatmap to see how private value changes optimal bidding.',
+  },
+  rl: {
+    label: 'RL convergence',
+    action: 'Train agent',
+    eyebrow: 'RL',
+    title: 'Convergence',
+    note: 'Train a Q-learning bidder and compare learned behavior against best response.',
+    emptyTitle: 'No learning run yet',
+    emptyText: 'Train the agent to inspect bid convergence and utility gaps.',
+  },
+  stats: {
+    label: 'Statistics',
+    action: 'Run statistics',
+    eyebrow: 'Statistics',
+    title: 'Bootstrap intervals',
+    note: 'Run many synthetic auctions and report bootstrap confidence intervals.',
+    emptyTitle: 'No statistical simulation yet',
+    emptyText: 'Run statistics to estimate uncertainty around auction outcomes.',
+  },
+}
+
+export const modeToCategory = Object.fromEntries(
+  modeCategories.flatMap((category) => category.modes.map((mode) => [mode, category.id])),
+)
