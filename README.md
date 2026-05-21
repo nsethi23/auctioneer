@@ -67,7 +67,8 @@ npm install
 npm run dev
 ```
 
-Dashboard: `http://127.0.0.1:5173`
+Local Dashboard: `http://127.0.0.1:5173`
+Production Dashboard: `https://auctioneer-five.vercel.app/`
 
 The dashboard shows API status in the header. All experiment panels are disabled
 if the backend is offline.
