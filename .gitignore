@@ -39,7 +39,6 @@ pnpm-debug.log*
 *.swp
 *.swo
 
-# Claude Code and impeccable skill config
-.claude/
+# Local design notes
 PRODUCT.md
 DESIGN.md
